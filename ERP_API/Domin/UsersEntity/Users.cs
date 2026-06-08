@@ -1,0 +1,25 @@
+﻿using ERP_API.Domin.PermartionEntity;
+
+namespace ERP_API.Domin.UsersEntity
+{
+    public class Users
+    {
+        public int Id { get; set; }
+        public required string Username { get; set; }
+        public required string HashPassword { get; set; }
+        public required string Email { get; set; }
+        public string? Role { get; set; }
+        public bool IsOnline { get; set; } = false;
+        public bool IsRemoved { get; set; } = false;
+        public DateTime? RemoveDate { get; set; }
+        public DateTime? UpdateDate { get; set; }
+        public DateTime? LastLogin { get; set; }
+        public DateTime? LastLogout { get; set; }
+        public bool IsActive { get; set; }
+        public byte[]? Version { get; set; }
+        public string? Token { get; set; }
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiryTime { get; set; } = null;
+        public ICollection<Permation>? Permations { get; set; }
+    }
+}
