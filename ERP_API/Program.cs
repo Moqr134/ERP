@@ -1,3 +1,5 @@
+using ERP_API.App.IService;
+using ERP_API.App.Service;
 using Infrastructure.ORM;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +14,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddDbContext<DBContext>(option => option.UseSqlServer(DBConn.ConnectionString));
+
+builder.Services.AddScoped<IUserService, UserService>();
 
 var app = builder.Build();
 
