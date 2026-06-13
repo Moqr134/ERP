@@ -1,7 +1,11 @@
 using ERP_API.App.IService;
 using ERP_API.App.Service;
+using Infrastructure.Cache;
 using Infrastructure.ORM;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +20,41 @@ builder.Services.AddMemoryCache();
 builder.Services.AddDbContext<DBContext>(option => option.UseSqlServer(DBConn.ConnectionString));
 
 builder.Services.AddScoped<IUserService, UserService>();
+
+builder.Services.AddScoped<IAppMemoryCache, AppMemoryCache>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(cfg =>
+                {
+                    cfg.RequireHttpsMetadata = false;
+                    cfg.SaveToken = true;
+
+                    byte[] symmetrickey = Convert.FromBase64String(DBConn.SecretKey);
+                    SymmetricSecurityKey securityKey = new SymmetricSecurityKey(symmetrickey);
+
+                    cfg.TokenValidationParameters = new TokenValidationParameters()
+                    {
+                        IssuerSigningKey = securityKey,
+                        ValidIssuer = "ERP",
+                        ValidAudience = "Users",
+                        ValidateLifetime = true,
+                        RequireExpirationTime = true,
+                        ClockSkew = TimeSpan.FromDays(10)
+                    };
+                    cfg.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Cookies["AuthToken"];
+                            if (!string.IsNullOrEmpty(accessToken))
+                            {
+                                context.Token = accessToken;
+                            }
+                            return Task.CompletedTask;
+                        }
+                    };
+                });
+
 
 var app = builder.Build();
 

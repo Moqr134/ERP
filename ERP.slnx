@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="ERPDto/ERPDto.csproj" Id="1ffce923-9ffb-4f5a-b82e-4762a81df898" />
   <Project Path="ERP_API/ERP_API.csproj" />
 </Solution>

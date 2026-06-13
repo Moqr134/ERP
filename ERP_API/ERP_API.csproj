@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
+    <ProjectReference Include="..\ERPDto\ERPDto.csproj" />
   </ItemGroup>
 
 </Project>

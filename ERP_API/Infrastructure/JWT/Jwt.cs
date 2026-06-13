@@ -1,0 +1,119 @@
+﻿using Domin.TokenDto;
+using ERP_API.Domin.UsersEntity;
+using Infrastructure.Logger;
+using Infrastructure.ORM;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+
+namespace Infrastructure.JWT;
+
+public class Jwt
+{
+    private DBContext dbContext;
+    private readonly byte[] symmetricKey = Convert.FromBase64String(DBConn.SecretKey);
+    public Jwt(DBContext context)
+    {
+        dbContext = context;
+    }
+    private string GenerateToken(Users user)
+    {
+        try
+        {
+            SymmetricSecurityKey securityKey = new SymmetricSecurityKey(symmetricKey);
+            string algorithms = SecurityAlgorithms.HmacSha256Signature;
+
+            SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Issuer = "ERP",
+                Audience = "Users",
+                NotBefore = DateTime.UtcNow,
+                Expires = DateTime.UtcNow.AddDays(1),
+                Subject = new ClaimsIdentity(new[] {
+                new Claim("ID", user.Id.ToString()),
+                new Claim("USERNAME", user.Username),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+
+            }),
+                SigningCredentials = new SigningCredentials(securityKey, algorithms)
+            };
+
+            JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
+            SecurityToken stoken = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(stoken);
+        }
+        catch (Exception ex)
+        {
+            new Loger().Write(ex, "JsonWebToken => GenerateToken => username = " + user.Username);
+            return "InvalidToken";
+        }
+    }
+    public int ValidateToken(string jwtToken)
+    {
+        TokenValidationParameters validationParameters = new TokenValidationParameters
+        {
+            ValidateLifetime = true,
+            ValidAudience = "Users",
+            ValidIssuer = "ERP",
+            IssuerSigningKey = new SymmetricSecurityKey(symmetricKey)
+        };
+        ClaimsPrincipal principal = new JwtSecurityTokenHandler()
+            .ValidateToken(jwtToken, validationParameters, out SecurityToken validatedToken);
+        return Convert.ToInt32(principal?.FindFirst("ID")?.Value);
+    }
+    private Users? ValidateRefreshToken(Users? user)
+    {
+        if (user is null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+        {
+            return null;
+        }
+
+        return user;
+    }
+    public async Task<TokenResponseDto?> RefreshTokensAsync(Users request)
+    {
+        var user = ValidateRefreshToken(request);
+        if (user is null)
+            return null;
+
+        return await CreateTokenResponse(user);
+    }
+    private string GenerateRefreshToken()
+    {
+        try
+        {
+            var randomNumber = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
+        catch (Exception ex)
+        {
+            new Loger().Write(ex, "JsonWebToken=> GenerateRefreshToken");
+            return null!;
+        }
+
+
+    }
+    private async Task<string> GenerateAndSaveRefreshTokenAsync(Users user)
+    {
+        var refreshToken = GenerateRefreshToken();
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        await dbContext.SaveChangesAsync();
+        return refreshToken;
+    }
+    public async Task<TokenResponseDto?> CreateTokenResponse(Users? user)
+    {
+        if (user is null)
+        {
+            return null;
+        }
+        return new TokenResponseDto
+        {
+            AccessToken = GenerateToken(user),
+            RefreshToken = await GenerateAndSaveRefreshTokenAsync(user)
+        };
+    }
+}
