@@ -13,7 +13,6 @@ namespace SecondApi.Controllers
     public class MasterController : ControllerBase
     {
 
-        public readonly Loger Loger;
         public DBContext _context;
         private IAppMemoryCache _cache;
         public int _UserId = 0;
@@ -25,7 +24,6 @@ namespace SecondApi.Controllers
             _context = context;
             _cache = cache;
             jwt = new Jwt(_context);
-            Loger = new Loger();
             _usersService = userService;
         }
         public Users UserManager
@@ -49,18 +47,13 @@ namespace SecondApi.Controllers
     
         private Users ResetUserinfo()
         {
-            try
-            {
-                if (_UserId == 0)
-                    GetUserId();
-                UserManager = _usersService.GetUser(_UserId);
-                return UserManager;
-            }
-            catch (Exception ex)
-            {
-                new Loger().Write(ex, "MasterController => ResetUserinfo");
-                throw;
-            }
+
+            if (_UserId == 0)
+                GetUserId();
+            UserManager = _usersService.GetUser(_UserId);
+            if (UserManager is null)
+                throw new KeyNotFoundException(nameof(_UserId));
+            return UserManager;
         }
         protected void GetUserId()
         {

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+﻿using Infrastructure.Service;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Infrastructure.Cache;
 
@@ -11,7 +12,7 @@ public interface IAppMemoryCache
     void Remove(string key);
 }
 
-public class AppMemoryCache : IAppMemoryCache
+public class AppMemoryCache : IAppMemoryCache, IScopped
 {
     private readonly IMemoryCache _cache;
 

@@ -1,9 +1,13 @@
-﻿namespace SherdProject.DTO
+﻿using Validation.Attribute;
+
+namespace SherdProject.DTO
 {
     public class UserModel
     {
         public int Id { get; set; }
-        public string? Username { get; set; }
-        public string? Password { get; set; }
+        [StringValidate]
+        public string Username { get; set; }
+        [StringValidate]
+        public string Password { get; set; }
     }
 }

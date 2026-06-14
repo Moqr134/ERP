@@ -2,6 +2,7 @@ using ERP_API.App.IService;
 using ERP_API.App.Service;
 using Infrastructure.Cache;
 using Infrastructure.ORM;
+using Infrastructure.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -17,11 +18,11 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddMemoryCache();
 
+builder.Services.Register<ISingleton>();
+
+builder.Services.Register<IScopped>();
+
 builder.Services.AddDbContext<DBContext>(option => option.UseSqlServer(DBConn.ConnectionString));
-
-builder.Services.AddScoped<IUserService, UserService>();
-
-builder.Services.AddScoped<IAppMemoryCache, AppMemoryCache>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(cfg =>

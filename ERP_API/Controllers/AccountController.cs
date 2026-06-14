@@ -1,6 +1,7 @@
 ﻿using Domin.TokenDto;
 using ERP_API.App.IService;
 using ERP_API.Domin.UsersEntity;
+using Infrastructure.AppException;
 using Infrastructure.Cache;
 using Infrastructure.ORM;
 using Infrastructure.PassowdHashing;
@@ -23,51 +24,39 @@ namespace ERP_API.Controllers
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] UserModel model)
         {
-            try
+            Users user = await _usersService.CheckUser(model.Username);
+            bool Check = passwordHashing.VerifyPassword(model.Password, user.HashPassword);
+            if (!Check)
+                throw new LogicException("عذراً، كلمة المرور غير صحيحة.");
+            TokenResponseDto? token = await jwt.CreateTokenResponse(user);
+            if (token == null)
+                throw new Exception("حدث خطأ.");
+            user.IsOnline = true;
+            user.LastLogin = DateTime.UtcNow.AddHours(3);
+            user.Token = token.AccessToken;
+            user.RefreshToken = token.RefreshToken;
+            _context.Users.Entry(user);
+            await _context.SaveChangesAsync();
+            var cookieOptions = new CookieOptions
             {
-                if (string.IsNullOrEmpty(model.Username) || string.IsNullOrEmpty(model.Password))
-                    return BadRequest("يرجى ادخال الاسم وكلمه المرور");
-                Users user = await _usersService.CheckUser(model.Username);
-                if (user == null)
-                    return BadRequest("عذرا المستخدم غير موجود");
-                bool Check = passwordHashing.VerifyPassword(model.Password, user.HashPassword);
-                if (!Check)
-                    return BadRequest("عذرا كلمه المرور غير صحيحة");
-                TokenResponseDto? token = await jwt.CreateTokenResponse(user);
-                if (token == null)
-                    return BadRequest("حدث خطا ما ");
-                user.IsOnline = true;
-                user.LastLogin = DateTime.UtcNow.AddHours(3);
-                user.Token = token.AccessToken;
-                user.RefreshToken = token.RefreshToken;
-                _context.Users.Entry(user);
-                await _context.SaveChangesAsync();
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    SameSite = SameSiteMode.None,
-                    Secure = true,
-                    Expires = DateTime.UtcNow.AddMinutes(30)
-                };
-                Response.Cookies.Append("AuthToken", user.Token, cookieOptions);
-                var refreshCookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    SameSite = SameSiteMode.None,
-                    Secure = true,
-                    Expires = DateTime.UtcNow.AddDays(7)
-                };
-                Response.Cookies.Append("RefreshToken", user.RefreshToken, refreshCookieOptions);
-                _UserId = user.Id;
-                UserManager = user;
-                //return Ok("تم تسجيل الدخول بنجاح");
-                return Ok(user.Token);
-            }
-            catch (Exception ex)
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Secure = true,
+                Expires = DateTime.UtcNow.AddMinutes(30)
+            };
+            Response.Cookies.Append("AuthToken", user.Token, cookieOptions);
+            var refreshCookieOptions = new CookieOptions
             {
-                await Loger.WriteAsync(ex, "AccountController => Login");
-                return BadRequest("حدث خطا ما");
-            }
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Secure = true,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+            Response.Cookies.Append("RefreshToken", user.RefreshToken, refreshCookieOptions);
+            _UserId = user.Id;
+            UserManager = user;
+            //return Ok("تم تسجيل الدخول بنجاح");
+            return Ok(user.Token);
         }
     }
 }

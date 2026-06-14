@@ -19,8 +19,6 @@ public class Jwt
     }
     private string GenerateToken(Users user)
     {
-        try
-        {
             SymmetricSecurityKey securityKey = new SymmetricSecurityKey(symmetricKey);
             string algorithms = SecurityAlgorithms.HmacSha256Signature;
 
@@ -42,12 +40,6 @@ public class Jwt
             JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
             SecurityToken stoken = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(stoken);
-        }
-        catch (Exception ex)
-        {
-            new Loger().Write(ex, "JsonWebToken => GenerateToken => username = " + user.Username);
-            return "InvalidToken";
-        }
     }
     public int ValidateToken(string jwtToken)
     {
@@ -81,20 +73,10 @@ public class Jwt
     }
     private string GenerateRefreshToken()
     {
-        try
-        {
             var randomNumber = new byte[32];
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
-        }
-        catch (Exception ex)
-        {
-            new Loger().Write(ex, "JsonWebToken=> GenerateRefreshToken");
-            return null!;
-        }
-
-
     }
     private async Task<string> GenerateAndSaveRefreshTokenAsync(Users user)
     {
