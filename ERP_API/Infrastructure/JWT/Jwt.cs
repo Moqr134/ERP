@@ -1,4 +1,5 @@
 ﻿using Domin.TokenDto;
+using ERP_API.Domin.PermartionEntity;
 using ERP_API.Domin.UsersEntity;
 using Infrastructure.Logger;
 using Infrastructure.ORM;
@@ -17,7 +18,7 @@ public class Jwt
     {
         dbContext = context;
     }
-    private string GenerateToken(Users user)
+    private string GenerateToken(Users user,List<Permation> permations)
     {
             SymmetricSecurityKey securityKey = new SymmetricSecurityKey(symmetricKey);
             string algorithms = SecurityAlgorithms.HmacSha256Signature;
@@ -32,7 +33,7 @@ public class Jwt
                 new Claim("ID", user.Id.ToString()),
                 new Claim("USERNAME", user.Username),
                 new Claim(ClaimTypes.Role, user.Role.ToString()),
-
+                new Claim("Permations", string.Join(",", permations.Select(p => p.Name)))
             }),
                 SigningCredentials = new SigningCredentials(securityKey, algorithms)
             };
@@ -63,13 +64,13 @@ public class Jwt
 
         return user;
     }
-    public async Task<TokenResponseDto?> RefreshTokensAsync(Users request)
+    public async Task<TokenResponseDto?> RefreshTokensAsync(Users request, List<Permation> permations)
     {
         var user = ValidateRefreshToken(request);
         if (user is null)
             return null;
 
-        return await CreateTokenResponse(user);
+        return await CreateTokenResponse(user, permations);
     }
     private string GenerateRefreshToken()
     {
@@ -86,7 +87,7 @@ public class Jwt
         await dbContext.SaveChangesAsync();
         return refreshToken;
     }
-    public async Task<TokenResponseDto?> CreateTokenResponse(Users? user)
+    public async Task<TokenResponseDto?> CreateTokenResponse(Users? user, List<Permation> permations)
     {
         if (user is null)
         {
@@ -94,7 +95,7 @@ public class Jwt
         }
         return new TokenResponseDto
         {
-            AccessToken = GenerateToken(user),
+            AccessToken = GenerateToken(user, permations),
             RefreshToken = await GenerateAndSaveRefreshTokenAsync(user)
         };
     }

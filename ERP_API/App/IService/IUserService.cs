@@ -6,6 +6,6 @@ namespace ERP_API.App.IService
     {
         public Users GetUser(int id);
         public Task<Users> CheckUser(string Name);
-        public Task<Users> CheckUserExsist(string Name);
+        public Task<Users?> CheckUserExsist(string Name);
     }
 }
