@@ -1,6 +1,8 @@
+using AutoMapper;
 using ERP_API.App.IService;
 using ERP_API.App.Service;
 using Infrastructure.Cache;
+using Infrastructure.Mapping;
 using Infrastructure.ORM;
 using Infrastructure.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -23,6 +25,8 @@ builder.Services.Register<ISingleton>();
 builder.Services.Register<IScopped>();
 
 builder.Services.AddDbContext<DBContext>(option => option.UseSqlServer(DBConn.ConnectionString));
+
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(cfg =>

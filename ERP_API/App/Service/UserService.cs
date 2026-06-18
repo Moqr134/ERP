@@ -1,6 +1,11 @@
-﻿using ERP_API.App.IService;
+﻿using AutoMapper;
+using ERP_API.App.IService;
+using ERP_API.Domin.PermartionEntity;
+using ERP_API.Domin.RoleEntity;
 using ERP_API.Domin.UsersEntity;
 using ERP_API.Infrastructure.Services;
+using ERPDto.PaigingDto;
+using ERPDto.UserDto;
 using Infrastructure.AppException;
 using Infrastructure.ORM;
 using Infrastructure.Service;
@@ -10,31 +15,72 @@ namespace ERP_API.App.Service
 {
     public class UserService : MasterService, IUserService, IScopped
     {
-
-        public UserService(DBContext context):base(context)
+        public UserService(DBContext context, IMapper mapper):base(context, mapper)
         {
             
         }
-        public async Task<Users> CheckUser(string Name)
-        {
-            var user = await Context.Users.Where(x => x.Username == Name && x.IsRemoved == false).Include(x => x.Permations).FirstOrDefaultAsync();
-            if (user == null)
-                throw new KeyNotFoundException("المستخدم غير موجود");
-            else return user;
-        }
-
         public async Task<Users?> CheckUserExsist(string Name)
         {
             var user = await Context.Users.Where(x => x.Username == Name).FirstOrDefaultAsync();
             return user;
         }
-
-        public Users GetUser(int id)
+        public Task<List<UserOut>> GetUsers(PageDto pageDto)
+        {
+            var users = Context.Users.Where(x => x.IsRemoved == false)
+                .Select(x => new UserOut
+                {
+                    Id = x.Id,
+                    Name = x.Username,
+                    Email = x.Email,
+                })
+                .Skip((pageDto.PageIndex - 1) * pageDto.PageSize)
+                .Take(pageDto.PageSize)
+                .ToListAsync();
+            return users;
+        }
+        public async Task<UserOut> CheckUser(string Name)
+        {
+            var user = await Context.Users.Where(x => x.Username == Name && x.IsRemoved == false)
+                .Include(x => x.Permations)
+                .Select(x => new UserOut
+                {
+                    Id = x.Id,
+                    Name = x.Username,
+                    Email = x.Email,
+                })
+                .FirstOrDefaultAsync();
+            if (user == null)
+                throw new KeyNotFoundException("المستخدم غير موجود");
+            else return user;
+        }
+        public UserOut GetUser(int id)
         {
             var user = Context.Users.Find(id);
-            if (user is null)
+            if (user is null or { IsRemoved: true })
                 throw new KeyNotFoundException(nameof(id));
-            else return user;
+            else return _mapper.Map<Users, UserOut>(user);
+        }
+        public Task<Role?> GetUserRole(int userId)
+        {
+            var role = Context.UserRoles
+                .Where(x => x.UserId == userId)
+                .Include(x => x.Role)
+                .Select(x => x.Role)
+                .FirstOrDefaultAsync();
+            if (role == null)
+                throw new KeyNotFoundException("الدور غير موجود");
+            else return role;
+        }
+        public Task<List<Permission>> GetUserPermissions(int userId)
+        {
+            var permissions = Context.UserPermissions
+                .Where(x => x.UserId == userId)
+                .Include(x => x.Permission)
+                .Select(x => x.Permission)
+                .ToListAsync();
+            if (permissions == null)
+                throw new KeyNotFoundException("الصلاحيات غير موجودة");
+            else return permissions;
         }
     }
 }

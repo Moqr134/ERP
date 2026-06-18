@@ -1,4 +1,5 @@
 ﻿using Common.App;
+using ERP_API.Domin.ProductEntity;
 
 namespace ERP_API.Domin.StockTransactionsEntity
 {

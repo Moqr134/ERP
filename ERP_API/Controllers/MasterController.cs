@@ -1,5 +1,6 @@
 ﻿using ERP_API.App.IService;
 using ERP_API.Domin.UsersEntity;
+using ERPDto.UserDto;
 using Infrastructure.Cache;
 using Infrastructure.JWT;
 using Infrastructure.Logger;
@@ -26,14 +27,14 @@ namespace SecondApi.Controllers
             jwt = new Jwt(_context);
             _usersService = userService;
         }
-        public Users UserManager
+        public UserOut UserManager
         {
             get
             {
                 if (_UserId == 0)
                     GetUserId();
                 if (_cache.IsExist("User" + _UserId))
-                    return _cache.Get<Users>("User" + _UserId);
+                    return _cache.Get<UserOut>("User" + _UserId);
                 else
                 {
                     return ResetUserinfo();
@@ -45,7 +46,7 @@ namespace SecondApi.Controllers
             }
         }
     
-        private Users ResetUserinfo()
+        private UserOut ResetUserinfo()
         {
 
             if (_UserId == 0)

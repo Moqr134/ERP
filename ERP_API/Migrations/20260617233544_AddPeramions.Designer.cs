@@ -4,6 +4,7 @@ using Infrastructure.ORM;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERP_API.Migrations
 {
     [DbContext(typeof(DBContext))]
-    partial class DBContextModelSnapshot : ModelSnapshot
+    [Migration("20260617233544_AddPeramions")]
+    partial class AddPeramions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -83,14 +86,14 @@ namespace ERP_API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Permission", (string)null);
+                    b.ToTable("Permission");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.PermissionsEntity.RolePermissions", b =>
@@ -105,7 +108,7 @@ namespace ERP_API.Migrations
 
                     b.HasIndex("PermissionId");
 
-                    b.ToTable("RolePermissions", (string)null);
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.ProductEntity.Product", b =>
@@ -221,7 +224,7 @@ namespace ERP_API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Role", (string)null);
+                    b.ToTable("Role");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.RoleEntity.UserRoles", b =>
@@ -236,7 +239,7 @@ namespace ERP_API.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("UserRoles", (string)null);
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.StockTransactionsEntity.StockTransactions", b =>
@@ -253,6 +256,9 @@ namespace ERP_API.Migrations
                     b.Property<int?>("CreateUserId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsRemoved")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Notes")
                         .IsRequired()
                         .HasMaxLength(250)
@@ -267,6 +273,12 @@ namespace ERP_API.Migrations
                     b.Property<string>("ReferenceId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RemoveDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RemoveUserId")
+                        .HasColumnType("int");
 
                     b.Property<string>("TransactionType")
                         .IsRequired()
@@ -317,12 +329,6 @@ namespace ERP_API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreateDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("CreateUserId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -355,14 +361,8 @@ namespace ERP_API.Migrations
                     b.Property<DateTime?>("RemoveDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("RemoveUserId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("UpdateDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<int>("UpdateUserId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -383,7 +383,9 @@ namespace ERP_API.Migrations
                 {
                     b.HasOne("ERP_API.Domin.UsersEntity.Users", "User")
                         .WithMany("Permations")
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
