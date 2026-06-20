@@ -18,6 +18,6 @@ namespace ERP_API.App.IService
         public Task<Role> GetRole(string RoleName);
         public Task<List<Permission>> GetRolePermissions(int Id);
         public Task<List<Role>> GetUserRoles(int userId);
-        public Task<List<Permission>> GetUserPermissions(int userId);
+        public Task<List<Permission>> GetUserPermissions(int userId,int roleId);
     }
 }

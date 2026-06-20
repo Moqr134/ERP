@@ -70,16 +70,23 @@ namespace ERP_API.App.Service
                 throw new KeyNotFoundException("الدور غير موجود");
             else return role;
         }
-        public async Task<List<Permission>> GetUserPermissions(int userId)
+        public async Task<List<Permission>> GetUserPermissions(int userId,int roleId)
         {
-            List<Permission> permissions = await _context.UserPermissions
+            List<UserPermissions> permissions = await _context.UserPermissions
                 .Where(x => x.UserId == userId)
                 .Include(x => x.Permission)
-                .Select(x => x.Permission)
                 .ToListAsync();
-            if (permissions == null)
+            List<Permission> RolePermissions =await GetRolePermissions(roleId);
+            if (permissions == null || RolePermissions == null)
                 throw new KeyNotFoundException("الصلاحيات غير موجودة");
-            else return permissions;
+            List<Permission> NotAllowedPermissions = permissions.Where(x=>x.IsAllowed == false).Select(x => x.Permission).ToList();
+            List<Permission> AllowedPermissions = permissions.Where(x=>x.IsAllowed == true).Select(x => x.Permission).ToList();
+            foreach (var item in NotAllowedPermissions)
+            {
+                RolePermissions.RemoveAll(x => x.Id == item.Id);
+            }
+            AllowedPermissions.AddRange(RolePermissions);
+            return AllowedPermissions;
         }
 
         public async Task<Role> GetRole(string RoleName)
