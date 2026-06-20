@@ -7,7 +7,6 @@ namespace ERP_API.Domin.PermartionEntity
     {
         public int Id { get; set; }
         public required string Name { get; set; }
-        public Users? User { get; set; }
         public ICollection<RolePermissions> RolePermissions { get; set; } 
         public ICollection<UserPermissions> UserPermissions { get; set; }
     }

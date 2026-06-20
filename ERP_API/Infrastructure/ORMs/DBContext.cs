@@ -1,4 +1,5 @@
 ﻿using ERP_API.Domin.CategoriesEntity;
+using ERP_API.Domin.PermartionEntity;
 using ERP_API.Domin.PermissionsEntity;
 using ERP_API.Domin.ProductEntity;
 using ERP_API.Domin.RoleEntity;
@@ -19,6 +20,8 @@ public class DBContext:DbContext
         modelBuilder.ApplyConfiguration(new UserMap());
         modelBuilder.ApplyConfiguration(new CategoriesMap());
         modelBuilder.ApplyConfiguration(new ProductMap());
+        modelBuilder.ApplyConfiguration(new RoleMap());
+        modelBuilder.ApplyConfiguration(new PermissionsMap());
         modelBuilder.ApplyConfiguration(new StockTransactionsMap());
         modelBuilder.ApplyConfiguration(new UserRolesMap());
         modelBuilder.ApplyConfiguration(new UserPermissionsMap());
@@ -31,4 +34,6 @@ public class DBContext:DbContext
     public DbSet<UserRoles> UserRoles { get; set; }
     public DbSet<UserPermissions> UserPermissions { get; set; }
     public DbSet<RolePermissions> RolePermissions { get; set; }
+    public DbSet<Role> Roles { get; set; }
+    public DbSet<Permission> Permissions { get; set; }
 }

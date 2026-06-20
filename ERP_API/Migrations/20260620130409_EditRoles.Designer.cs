@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERP_API.Migrations
 {
     [DbContext(typeof(DBContext))]
-    [Migration("20260617233544_AddPeramions")]
-    partial class AddPeramions
+    [Migration("20260620130409_EditRoles")]
+    partial class EditRoles
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -84,16 +84,17 @@ namespace ERP_API.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Permission");
+                    b.ToTable("Permation", "dbo");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.PermissionsEntity.RolePermissions", b =>
@@ -198,14 +199,16 @@ namespace ERP_API.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<bool>("IsRemoved")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime?>("RemoveDate")
                         .HasColumnType("datetime2");
@@ -220,11 +223,13 @@ namespace ERP_API.Migrations
                         .HasColumnType("int");
 
                     b.Property<byte[]>("Version")
-                        .HasColumnType("varbinary(max)");
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Role");
+                    b.ToTable("Role", "dbo");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.RoleEntity.UserRoles", b =>
@@ -238,6 +243,9 @@ namespace ERP_API.Migrations
                     b.HasKey("UserId", "RoleId");
 
                     b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("UserRoles");
                 });
@@ -256,9 +264,6 @@ namespace ERP_API.Migrations
                     b.Property<int?>("CreateUserId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("IsRemoved")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Notes")
                         .IsRequired()
                         .HasMaxLength(250)
@@ -273,12 +278,6 @@ namespace ERP_API.Migrations
                     b.Property<string>("ReferenceId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("RemoveDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("RemoveUserId")
-                        .HasColumnType("int");
 
                     b.Property<string>("TransactionType")
                         .IsRequired()
@@ -329,6 +328,12 @@ namespace ERP_API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreateUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -361,8 +366,14 @@ namespace ERP_API.Migrations
                     b.Property<DateTime?>("RemoveDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("RemoveUserId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdateDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("UpdateUserId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -383,9 +394,7 @@ namespace ERP_API.Migrations
                 {
                     b.HasOne("ERP_API.Domin.UsersEntity.Users", "User")
                         .WithMany("Permations")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
 
                     b.Navigation("User");
                 });
@@ -429,8 +438,8 @@ namespace ERP_API.Migrations
                         .IsRequired();
 
                     b.HasOne("ERP_API.Domin.UsersEntity.Users", "Users")
-                        .WithMany("UserRoles")
-                        .HasForeignKey("UserId")
+                        .WithOne("UserRoles")
+                        .HasForeignKey("ERP_API.Domin.RoleEntity.UserRoles", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -492,7 +501,8 @@ namespace ERP_API.Migrations
 
                     b.Navigation("UserPermissions");
 
-                    b.Navigation("UserRoles");
+                    b.Navigation("UserRoles")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

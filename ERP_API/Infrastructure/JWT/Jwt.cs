@@ -20,26 +20,27 @@ public class Jwt
     }
     private string GenerateToken(Users user,List<Permission> permations)
     {
-            SymmetricSecurityKey securityKey = new SymmetricSecurityKey(symmetricKey);
-            string algorithms = SecurityAlgorithms.HmacSha256Signature;
+        SymmetricSecurityKey securityKey = new SymmetricSecurityKey(symmetricKey);
+        string algorithms = SecurityAlgorithms.HmacSha256Signature;
+        List<Claim> claims = new List<Claim>();
+        claims.Add(new Claim("USERNAME", user.Username));
+        claims.Add(new Claim("ID", user.Id.ToString()));
+        for (int i=0;i<permations.Count;i++) {
+            claims.Add(new Claim(ClaimTypes.Role, permations[i].Name));
+            }
+        SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Issuer = "ERP",
+            Audience = "Users",
+            NotBefore = DateTime.UtcNow,
+            Expires = DateTime.UtcNow.AddDays(1),
+            Subject = new ClaimsIdentity(claims),
+            SigningCredentials = new SigningCredentials(securityKey, algorithms)
+        };
 
-            SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Issuer = "ERP",
-                Audience = "Users",
-                NotBefore = DateTime.UtcNow,
-                Expires = DateTime.UtcNow.AddDays(1),
-                Subject = new ClaimsIdentity(new[] {
-                new Claim("ID", user.Id.ToString()),
-                new Claim("USERNAME", user.Username),
-                new Claim("Permations", string.Join(",", permations.Select(p => p.Name)))
-            }),
-                SigningCredentials = new SigningCredentials(securityKey, algorithms)
-            };
-
-            JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
-            SecurityToken stoken = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(stoken);
+        JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
+        SecurityToken stoken = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(stoken);
     }
     public int ValidateToken(string jwtToken)
     {

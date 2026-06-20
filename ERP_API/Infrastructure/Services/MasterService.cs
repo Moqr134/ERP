@@ -6,14 +6,15 @@ namespace ERP_API.Infrastructure.Services
 {
     public class MasterService
     {
-        public readonly DBContext Context;
+        public readonly DBContext _context;
 
         public readonly IMapper _mapper;
 
         public MasterService(DBContext context, IMapper mapper)
         {
-            Context = context;
+            _context = context;
             _mapper = mapper;
         }
+
     }
 }

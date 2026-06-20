@@ -81,16 +81,12 @@ namespace ERP_API.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Permission", (string)null);
+                    b.ToTable("Permation", "dbo");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.PermissionsEntity.RolePermissions", b =>
@@ -105,7 +101,7 @@ namespace ERP_API.Migrations
 
                     b.HasIndex("PermissionId");
 
-                    b.ToTable("RolePermissions", (string)null);
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.ProductEntity.Product", b =>
@@ -195,14 +191,16 @@ namespace ERP_API.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<bool>("IsRemoved")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime?>("RemoveDate")
                         .HasColumnType("datetime2");
@@ -217,11 +215,13 @@ namespace ERP_API.Migrations
                         .HasColumnType("int");
 
                     b.Property<byte[]>("Version")
-                        .HasColumnType("varbinary(max)");
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Role", (string)null);
+                    b.ToTable("Role", "dbo");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.RoleEntity.UserRoles", b =>
@@ -236,7 +236,10 @@ namespace ERP_API.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("UserRoles", (string)null);
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.StockTransactionsEntity.StockTransactions", b =>
@@ -379,15 +382,6 @@ namespace ERP_API.Migrations
                     b.ToTable("Users", "dbo");
                 });
 
-            modelBuilder.Entity("ERP_API.Domin.PermartionEntity.Permission", b =>
-                {
-                    b.HasOne("ERP_API.Domin.UsersEntity.Users", "User")
-                        .WithMany("Permations")
-                        .HasForeignKey("UserId");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("ERP_API.Domin.PermissionsEntity.RolePermissions", b =>
                 {
                     b.HasOne("ERP_API.Domin.PermartionEntity.Permission", "Permission")
@@ -427,8 +421,8 @@ namespace ERP_API.Migrations
                         .IsRequired();
 
                     b.HasOne("ERP_API.Domin.UsersEntity.Users", "Users")
-                        .WithMany("UserRoles")
-                        .HasForeignKey("UserId")
+                        .WithOne("UserRoles")
+                        .HasForeignKey("ERP_API.Domin.RoleEntity.UserRoles", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -486,11 +480,10 @@ namespace ERP_API.Migrations
 
             modelBuilder.Entity("ERP_API.Domin.UsersEntity.Users", b =>
                 {
-                    b.Navigation("Permations");
-
                     b.Navigation("UserPermissions");
 
-                    b.Navigation("UserRoles");
+                    b.Navigation("UserRoles")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

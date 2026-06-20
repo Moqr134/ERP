@@ -1,4 +1,5 @@
-﻿using ERP_API.App.IService;
+﻿using AutoMapper;
+using ERP_API.App.IService;
 using ERP_API.Domin.UsersEntity;
 using ERPDto.UserDto;
 using Infrastructure.Cache;
@@ -17,15 +18,16 @@ namespace SecondApi.Controllers
         public DBContext _context;
         private IAppMemoryCache _cache;
         public int _UserId = 0;
-        public int _categoryId = 0;
         public readonly IUserService _usersService;
         public readonly Jwt jwt;
-        public MasterController(IUserService userService, IAppMemoryCache cache, DBContext context)
+        public IMapper _mapper;
+        public MasterController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper)
         {
             _context = context;
             _cache = cache;
             jwt = new Jwt(_context);
             _usersService = userService;
+            _mapper = mapper;
         }
         public UserOut UserManager
         {

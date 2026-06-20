@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERP_API.Migrations
 {
     [DbContext(typeof(DBContext))]
-    [Migration("20260617142942_AddEnities")]
-    partial class AddEnities
+    [Migration("20260620131800_EditPermisson")]
+    partial class EditPermisson
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -74,7 +74,7 @@ namespace ERP_API.Migrations
                     b.ToTable("Categories", "dbo");
                 });
 
-            modelBuilder.Entity("ERP_API.Domin.PermartionEntity.Permation", b =>
+            modelBuilder.Entity("ERP_API.Domin.PermartionEntity.Permission", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -84,16 +84,27 @@ namespace ERP_API.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.ToTable("Permation", "dbo");
+                });
 
-                    b.ToTable("Permation");
+            modelBuilder.Entity("ERP_API.Domin.PermissionsEntity.RolePermissions", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.ProductEntity.Product", b =>
@@ -167,7 +178,7 @@ namespace ERP_API.Migrations
                     b.ToTable("Products", "dbo");
                 });
 
-            modelBuilder.Entity("ERP_API.Domin.StockTransactionsEntity.StockTransactions", b =>
+            modelBuilder.Entity("ERP_API.Domin.RoleEntity.Role", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -181,8 +192,72 @@ namespace ERP_API.Migrations
                     b.Property<int?>("CreateUserId")
                         .HasColumnType("int");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
                     b.Property<bool>("IsRemoved")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("RemoveDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RemoveUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Role", "dbo");
+                });
+
+            modelBuilder.Entity("ERP_API.Domin.RoleEntity.UserRoles", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserRoles");
+                });
+
+            modelBuilder.Entity("ERP_API.Domin.StockTransactionsEntity.StockTransactions", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Notes")
                         .IsRequired()
@@ -198,12 +273,6 @@ namespace ERP_API.Migrations
                     b.Property<string>("ReferenceId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("RemoveDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("RemoveUserId")
-                        .HasColumnType("int");
 
                     b.Property<string>("TransactionType")
                         .IsRequired()
@@ -223,7 +292,27 @@ namespace ERP_API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ProductId");
+
                     b.ToTable("StockTransactions", "dbo");
+                });
+
+            modelBuilder.Entity("ERP_API.Domin.UsersEntity.UserPermissions", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsAllowed")
+                        .HasColumnType("bit");
+
+                    b.HasKey("UserId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("UserPermissions", "dbo");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.UsersEntity.Users", b =>
@@ -233,6 +322,12 @@ namespace ERP_API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreateUserId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -266,11 +361,14 @@ namespace ERP_API.Migrations
                     b.Property<DateTime?>("RemoveDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Role")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("RemoveUserId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdateDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("UpdateUserId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -287,15 +385,23 @@ namespace ERP_API.Migrations
                     b.ToTable("Users", "dbo");
                 });
 
-            modelBuilder.Entity("ERP_API.Domin.PermartionEntity.Permation", b =>
+            modelBuilder.Entity("ERP_API.Domin.PermissionsEntity.RolePermissions", b =>
                 {
-                    b.HasOne("ERP_API.Domin.UsersEntity.Users", "User")
-                        .WithMany("Permations")
-                        .HasForeignKey("UserId")
+                    b.HasOne("ERP_API.Domin.PermartionEntity.Permission", "Permission")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("PermissionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("User");
+                    b.HasOne("ERP_API.Domin.RoleEntity.Role", "Role")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("ERP_API.Domin.ProductEntity.Product", b =>
@@ -309,14 +415,78 @@ namespace ERP_API.Migrations
                     b.Navigation("Categories");
                 });
 
+            modelBuilder.Entity("ERP_API.Domin.RoleEntity.UserRoles", b =>
+                {
+                    b.HasOne("ERP_API.Domin.RoleEntity.Role", "Role")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ERP_API.Domin.UsersEntity.Users", "Users")
+                        .WithOne("UserRoles")
+                        .HasForeignKey("ERP_API.Domin.RoleEntity.UserRoles", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("ERP_API.Domin.StockTransactionsEntity.StockTransactions", b =>
+                {
+                    b.HasOne("ERP_API.Domin.ProductEntity.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ERP_API.Domin.UsersEntity.UserPermissions", b =>
+                {
+                    b.HasOne("ERP_API.Domin.PermartionEntity.Permission", "Permission")
+                        .WithMany("UserPermissions")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP_API.Domin.UsersEntity.Users", "Users")
+                        .WithMany("UserPermissions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Users");
+                });
+
             modelBuilder.Entity("ERP_API.Domin.CategoriesEntity.Categories", b =>
                 {
                     b.Navigation("Products");
                 });
 
+            modelBuilder.Entity("ERP_API.Domin.PermartionEntity.Permission", b =>
+                {
+                    b.Navigation("RolePermissions");
+
+                    b.Navigation("UserPermissions");
+                });
+
+            modelBuilder.Entity("ERP_API.Domin.RoleEntity.Role", b =>
+                {
+                    b.Navigation("RolePermissions");
+
+                    b.Navigation("UserRoles");
+                });
+
             modelBuilder.Entity("ERP_API.Domin.UsersEntity.Users", b =>
                 {
-                    b.Navigation("Permations");
+                    b.Navigation("UserPermissions");
+
+                    b.Navigation("UserRoles")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

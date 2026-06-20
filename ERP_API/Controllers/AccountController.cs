@@ -1,11 +1,14 @@
-﻿using Domin.TokenDto;
+﻿using AutoMapper;
+using Domin.TokenDto;
 using ERP_API.App.IService;
 using ERP_API.Domin.PermartionEntity;
 using ERP_API.Domin.UsersEntity;
+using ERPDto.UserDto;
 using Infrastructure.AppException;
 using Infrastructure.Cache;
 using Infrastructure.ORM;
 using Infrastructure.PassowdHashing;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SecondApi.Controllers;
@@ -17,11 +20,68 @@ namespace ERP_API.Controllers
     [ApiController]
     public class AccountController : MasterController
     {
-        private PasswordHashing passwordHashing;
-        public AccountController(IUserService userService, IAppMemoryCache cache, DBContext context) : base(userService, cache, context)
+        private readonly IAccountService _accountService;
+        public AccountController(IUserService userService, IAppMemoryCache cache, DBContext context,IAccountService accountService,IMapper mapper)
+            : base(userService, cache, context,mapper)
         {
-            passwordHashing = new PasswordHashing();
+            _accountService = accountService;
         }
-        
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginModel userModel)
+        {
+            var token = await _accountService.Login(userModel);
+            var user = _mapper.Map<UserOut>(token);
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Secure = true,
+                Expires = DateTime.UtcNow.AddMinutes(30)
+            };
+            Response.Cookies.Append("AuthToken", token.Token, cookieOptions);
+            var refreshCookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Secure = true,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+            Response.Cookies.Append("RefreshToken", token.RefreshToken, refreshCookieOptions);
+            UserManager = user;
+            return Ok("تم تسجيل الدخول بنجاح");
+        }
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            await _accountService.Register(model, _UserId);
+            return Ok("تم انشاء الحساب بنجاح");
+        }
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            string? refreshToken = Request.Cookies["RefreshToken"];
+            if (string.IsNullOrEmpty(refreshToken))
+                return Unauthorized();
+            UserTokenDto token = await _accountService.RefreshToken(refreshToken);
+            var user = _mapper.Map<UserOut>(token);
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Secure = true,
+                Expires = DateTime.UtcNow.AddMinutes(30)
+            };
+            Response.Cookies.Append("AuthToken", token.Token, cookieOptions);
+            var refreshCookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Secure = true,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+            Response.Cookies.Append("RefreshToken", token.RefreshToken, refreshCookieOptions);
+            UserManager = user;
+            return Ok("تم تسجيل الدخول بنجاح");
+        }
     }
 }

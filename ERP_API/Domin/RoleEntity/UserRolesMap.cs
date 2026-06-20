@@ -8,8 +8,8 @@ namespace ERP_API.Domin.RoleEntity
         {
             builder.HasKey(ur => new { ur.UserId, ur.RoleId });
             builder.HasOne(ur => ur.Users)
-                .WithMany(u => u.UserRoles)
-                .HasForeignKey(ur => ur.UserId)
+                .WithOne(u => u.UserRoles)
+                .HasForeignKey<UserRoles>(ur => ur.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             builder.HasOne(ur => ur.Role)
                 .WithMany(r => r.UserRoles)

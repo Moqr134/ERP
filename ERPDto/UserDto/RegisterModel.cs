@@ -1,16 +1,21 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Validation.Attribute;
 
-namespace SherdProject.DTO
+namespace ERPDto.UserDto
 {
-    public class UserModel
+    public class RegisterModel
     {
-        public int Id { get; set; }
         [StringValidate(5, 100, false)]
         public string Username { get; set; }
         [StringValidate(5, 100, false)]
         public string Password { get; set; }
         [StringValidate(5, 100, false)]
         public string Email { get; set; }
+        [StringValidate]
+        public string Role { get; set; }
     }
 }
