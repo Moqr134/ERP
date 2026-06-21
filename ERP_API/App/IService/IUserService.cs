@@ -9,6 +9,7 @@ namespace ERP_API.App.IService
     public interface IUserService
     {
         public UserOut GetUser(int id);
+        public Users GetUserById(int Id);
         public Task<List<UserOut>> GetUsers(PageDto pageDto);
         public Task<UserOut> CheckUser(string Name);
         public Task<Users?> GetFullUser(string Name);
@@ -19,5 +20,7 @@ namespace ERP_API.App.IService
         public Task<List<Permission>> GetRolePermissions(int Id);
         public Task<List<Role>> GetUserRoles(int userId);
         public Task<List<Permission>> GetUserPermissions(int userId,int roleId);
+        public Task UpdateUser(UpdateUserModel model, int updateUserId);
+        public Task DeleteUser(int userId, int removeUserId);
     }
 }

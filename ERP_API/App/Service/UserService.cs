@@ -24,17 +24,18 @@ namespace ERP_API.App.Service
             var user = await _context.Users.Where(x => x.Username == Name).FirstOrDefaultAsync();
             return user;
         }
-        public Task<List<UserOut>> GetUsers(PageDto pageDto)
+        public async Task<List<UserOut>> GetUsers(PageDto pageDto)
         {
-            var users = _context.Users.Where(x => x.IsRemoved == false)
+            List<UserOut> users = await _context.Users.Where(x => x.IsRemoved == false)
+                
+                .Skip((pageDto.PageIndex - 1) * pageDto.PageSize)
+                .Take(pageDto.PageSize)
                 .Select(x => new UserOut
                 {
                     Id = x.Id,
                     Username = x.Username,
                     Email = x.Email,
                 })
-                .Skip((pageDto.PageIndex - 1) * pageDto.PageSize)
-                .Take(pageDto.PageSize)
                 .ToListAsync();
             return users;
         }
@@ -139,6 +140,37 @@ namespace ERP_API.App.Service
             if (users is null)
                 throw new KeyNotFoundException("المستخدم غير موجود");
             else return users;
+        }
+
+        public async Task UpdateUser(UpdateUserModel model, int updateUserId)
+        {
+            Users users = GetUserById(model.Id);
+            if(model.Username != null)
+                users.Username = model.Username;
+            if (model.Email != null)
+                users.Email = model.Email;
+            users.UpdateDate = DateTime.UtcNow.AddHours(3);
+            users.UpdateUserId = updateUserId;
+            _context.Entry(users).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteUser(int userId, int removeUserId)
+        {
+            Users users = GetUserById(userId);
+            users.IsRemoved = true;
+            users.RemoveDate = DateTime.UtcNow.AddHours(3);
+            users.RemoveUserId = removeUserId;
+            _context.Entry(users).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+        }
+
+        public Users GetUserById(int Id)
+        {
+            Users? user = _context.Users.Find(Id);
+            if (user is null || user.IsRemoved)
+                throw new KeyNotFoundException("المستخدم غير موجود");
+            else return user;
         }
     }
 }

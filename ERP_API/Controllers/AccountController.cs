@@ -51,8 +51,10 @@ namespace ERP_API.Controllers
             return Ok("تم تسجيل الدخول بنجاح");
         }
         [HttpPost("register")]
+        [Authorize(Roles = "FullAccess")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
+            if (_UserId == 0) GetUserId();
             await _accountService.Register(model, _UserId);
             return Ok("تم انشاء الحساب بنجاح");
         }
