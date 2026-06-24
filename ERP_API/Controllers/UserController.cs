@@ -39,5 +39,12 @@ namespace ERP_API.Controllers
             await _usersService.DeleteUser(userId, _UserId);
             return Ok("تم حذف المستخدم بنجاح");
         }
+        [HttpPost("UpdateUserPermission")]
+        public async Task<IActionResult> UpdateUserPermission([FromBody]List<UserPermissionDto> userPermission)
+        {
+            if (_UserId == 0) GetUserId();
+            await _usersService.UpdateUserpermission(userPermission);
+            return Ok("تم تعديل صلاحيات المستخدم بنجاح");
+        }
     }
 }

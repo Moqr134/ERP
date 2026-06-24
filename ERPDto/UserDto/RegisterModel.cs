@@ -15,7 +15,6 @@ namespace ERPDto.UserDto
         public string Password { get; set; }
         [StringValidate(5, 100, false)]
         public string Email { get; set; }
-        [StringValidate]
-        public string Role { get; set; }
+        public int Role { get; set; }
     }
 }

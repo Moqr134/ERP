@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
 using ERP_API.App.IService;
+using ERP_API.Domin.PermartionEntity;
+using ERP_API.Domin.PermissionsEntity;
 using ERP_API.Domin.RoleEntity;
 using ERP_API.Infrastructure.Services;
 using ERPDto.RolesDto;
@@ -68,6 +70,16 @@ namespace ERP_API.App.Service
             }).ToList();
             return roles;
         }
+        public async Task<List<Permission>> GetAllPermissions()
+        {
+            List<Permission> permissions = await _context.Permissions.ToListAsync();
+            return permissions;
+        }
+        public async Task<Permission?> GetPermission(int id)
+        {
+            Permission? permission = await _context.Permissions.FindAsync(id);
+            return permission;
+        }
         public async Task<Role?> GetRoleById(int id)
         {
             Role? role = _context.Roles.FirstOrDefault(r => r.Id == id && !r.IsRemoved);
@@ -77,6 +89,35 @@ namespace ERP_API.App.Service
         {
             Role? role = _context.Roles.FirstOrDefault(r => r.Name == roleName && !r.IsRemoved);
             return role;
+        }
+
+        public async Task CreateRolePermission(int roleId, List<int> permissionIds)
+        {
+            List<RolePermissions> rolePermissions = await _context.RolePermissions.Where(rp => rp.RoleId == roleId).ToListAsync();
+            Role? role = await GetRoleById(roleId);
+            if (role == null) {
+                throw new KeyNotFoundException("لم يتم العثور على الدور بالمعرف المحدد.");
+            }
+            List<Permission> permissions = new List<Permission>();
+            foreach (var id in permissionIds)
+            {
+                Permission? permission = await GetPermission(id);
+                if (permission == null)
+                {
+                    throw new KeyNotFoundException($"لم يتم العثور على الصلاحية بالمعرف {id}.");
+                }
+                permissions.Add(permission);
+            }
+            _context.RolePermissions.RemoveRange(rolePermissions);
+            List<RolePermissions> NewRolePermissions = new List<RolePermissions>();
+            foreach (var permission in permissionIds) {
+                NewRolePermissions.Add(new RolePermissions {
+                    RoleId = roleId,
+                    PermissionId = permission
+                });
+            }
+            await _context.RolePermissions.AddRangeAsync(NewRolePermissions);
+            await _context.SaveChangesAsync();
         }
     }
 }

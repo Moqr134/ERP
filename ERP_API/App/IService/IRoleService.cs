@@ -10,5 +10,6 @@ namespace ERP_API.App.IService
         public Task UpdateRole(int UpdateUserId, RoleDto roleDto);
         public Task DeleteRole(int id, int deleteUserId);
         public Task<Role?> GetRoleById(int id);
+        public Task CreateRolePermission(int roleId, List<int> permissionIds);
     }
 }

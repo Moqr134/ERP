@@ -63,5 +63,12 @@ namespace ERP_API.Controllers
             await _roleService.DeleteRole(id, _UserId);
             return Ok();
         }
+        [HttpPost("CreateRolePermission")]
+        [Authorize(Roles = "FullAccess,CreateRolePermission")]
+        public async Task<IActionResult> CreateRolePermission([FromBody] RolePermissionDto rolePermissionDto)
+        {
+            await _roleService.CreateRolePermission(rolePermissionDto.RoleId, rolePermissionDto.PermissionIds);
+            return Ok();
+        }
     }
 }

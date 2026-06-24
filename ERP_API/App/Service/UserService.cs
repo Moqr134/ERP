@@ -97,6 +97,13 @@ namespace ERP_API.App.Service
                 throw new KeyNotFoundException("الدور غير موجود");
             else return role;
         }
+        public async Task<Role> GetRole(int RoleId)
+        {
+            var role = await _context.Roles.Where(x => x.Id == RoleId && x.IsRemoved == false).FirstOrDefaultAsync();
+            if (role == null)
+                throw new KeyNotFoundException("الدور غير موجود");
+            else return role;
+        }
 
         public async Task<List<Role>> GetUserRoles(int userId)
         {
@@ -171,6 +178,49 @@ namespace ERP_API.App.Service
             if (user is null || user.IsRemoved)
                 throw new KeyNotFoundException("المستخدم غير موجود");
             else return user;
+        }
+        public async Task<List<UserPermissions>> GetUserPermissionsByUserId(int userId)
+        {
+            List<UserPermissions> permissions = await _context.UserPermissions
+                .Where(x => x.UserId == userId)
+                .ToListAsync();
+            return permissions;
+        }
+        public async Task UpdateUserpermission(List<UserPermissionDto> userPermission)
+        {
+            if (userPermission == null || userPermission.Count == 0)
+                return;
+
+            int userId = userPermission[0].UserId;
+            if (userPermission.Any(p => p.UserId != userId))
+                throw new ArgumentException("All permission entries must belong to the same user.");
+
+            List<UserPermissions> existing = await GetUserPermissionsByUserId(userId);
+
+            var incomingByPermission = userPermission.ToDictionary(p => p.PermissionId);
+
+            foreach (var exist in existing)
+            {
+                if (incomingByPermission.TryGetValue(exist.PermissionId, out var incoming))
+                {
+                    if (exist.IsAllowed != incoming.IsAllowed)
+                    {
+                        exist.IsAllowed = incoming.IsAllowed;
+                        _context.Entry(exist).State = EntityState.Modified;
+                    }
+                    incomingByPermission.Remove(exist.PermissionId);
+                }
+            }
+
+            if (incomingByPermission.Count > 0)
+            {
+                var toAdd = incomingByPermission.Values
+                    .Select(dto => _mapper.Map<UserPermissions>(dto))
+                    .ToList();
+                await _context.UserPermissions.AddRangeAsync(toAdd);
+            }
+
+            await _context.SaveChangesAsync();
         }
     }
 }

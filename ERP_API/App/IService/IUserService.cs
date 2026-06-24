@@ -17,10 +17,12 @@ namespace ERP_API.App.IService
         public Task<Users?> CheckUserExsist(string Name);
         public Task<Role?> GetUserRole(int userId);
         public Task<Role> GetRole(string RoleName);
+        public Task<Role> GetRole(int RoleId);
         public Task<List<Permission>> GetRolePermissions(int Id);
         public Task<List<Role>> GetUserRoles(int userId);
         public Task<List<Permission>> GetUserPermissions(int userId,int roleId);
         public Task UpdateUser(UpdateUserModel model, int updateUserId);
         public Task DeleteUser(int userId, int removeUserId);
+        public Task UpdateUserpermission(List<UserPermissionDto> userPermission);
     }
 }

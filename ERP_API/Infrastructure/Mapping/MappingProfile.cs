@@ -16,5 +16,7 @@ public class MappingProfile : Profile
         CreateMap<UserTokenDto, UserOut>();
         CreateMap<Role, RoleDto>();
         CreateMap<RoleDto, Role>();
+        CreateMap<UserPermissions, UserPermissionDto>();
+        CreateMap<UserPermissionDto, UserPermissions>();
     }
 }

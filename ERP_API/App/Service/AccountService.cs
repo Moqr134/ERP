@@ -65,8 +65,8 @@ namespace ERP_API.App.Service
                 throw new DuplicateException("المستخدم موجود مسبقا");
             }
             string hashPassword = passwordHashing.HashPassword(Model.Password);
-            var role = await _UserService.GetRole(Model.Role);
-            var userRoles = new UserRoles
+            Role role = await _UserService.GetRole(Model.Role);
+            UserRoles userRoles = new UserRoles
             {
                 RoleId = role.Id
             };
