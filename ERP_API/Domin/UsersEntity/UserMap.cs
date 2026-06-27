@@ -26,6 +26,8 @@ namespace ERP_API.Domin.UsersEntity
             builder.Property(x => x.RefreshToken);
             builder.Property(x => x.RefreshTokenExpiryTime);
             builder.Ignore(x => x.Token);
+
+            builder.HasQueryFilter(x => x.IsRemoved == false);
         }
     }
 }

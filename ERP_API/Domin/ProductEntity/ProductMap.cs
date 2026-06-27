@@ -26,6 +26,7 @@ namespace ERP_API.Domin.ProductEntity
             builder.Property(x => x.RemoveUserId);
             builder.Property(x => x.Version).IsRowVersion();
             builder.HasOne(x => x.Categories).WithMany(x => x.Products).HasForeignKey(x => x.CategoriesId).OnDelete(DeleteBehavior.Restrict);
+            builder.HasQueryFilter(x => x.IsRemoved == false);
         }
     }
 }

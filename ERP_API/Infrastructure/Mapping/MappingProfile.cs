@@ -1,6 +1,10 @@
 ﻿using AutoMapper;
+using ERP_API.Domin.CategoriesEntity;
+using ERP_API.Domin.ProductEntity;
 using ERP_API.Domin.RoleEntity;
 using ERP_API.Domin.UsersEntity;
+using ERPDto.CategoriesDto;
+using ERPDto.ProductsDto;
 using ERPDto.RolesDto;
 using ERPDto.UserDto;
 using SherdProject.DTO;
@@ -18,5 +22,9 @@ public class MappingProfile : Profile
         CreateMap<RoleDto, Role>();
         CreateMap<UserPermissions, UserPermissionDto>();
         CreateMap<UserPermissionDto, UserPermissions>();
+        CreateMap<CategoryDto, Categories>();
+        CreateMap<Categories, CategoryDto>();
+        CreateMap<Product,ProductDto>();
+        CreateMap<ProductDto,Product>();
     }
 }

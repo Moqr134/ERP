@@ -15,6 +15,5 @@ namespace ERP_API.Infrastructure.Services
             _context = context;
             _mapper = mapper;
         }
-
     }
 }

@@ -19,6 +19,7 @@ namespace ERP_API.Domin.CategoriesEntity
             builder.Property(x => x.RemoveDate);
             builder.Property(x => x.RemoveUserId);
             builder.Property(x => x.Version).IsRowVersion();
+            builder.HasQueryFilter(x=> x.IsRemoved == false);
         }
     }
 }

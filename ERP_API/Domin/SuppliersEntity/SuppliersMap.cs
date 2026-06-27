@@ -19,6 +19,8 @@ namespace ERP_API.Domin.SuppliersEntity
             builder.Property(x => x.CompanyName).IsRequired().HasMaxLength(100);
             builder.Property(x => x.ContactName).IsRequired().HasMaxLength(100);
             builder.Property(x => x.PhoneNumper).IsRequired().HasMaxLength(20);
+
+            builder.HasQueryFilter(x => x.IsRemoved == false);
         }
     }
 }

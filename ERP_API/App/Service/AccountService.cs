@@ -40,7 +40,7 @@ namespace ERP_API.App.Service
             {
                 throw new UnauthorizedAccessException("كلمة المرور غير صحيحة");
             }
-            var permisson = await _UserService.GetUserPermissions(user.Id, user.UserRoles.RoleId);
+            var permisson = await _UserService.GetUserPermissions(user.Id, user.UserRoles.First().RoleId);
             TokenResponseDto? token = await jwt.CreateTokenResponse(user, permisson);
             if (token == null)
             {
@@ -80,7 +80,7 @@ namespace ERP_API.App.Service
                 IsOnline = false,
                 CreateDate = DateTime.UtcNow.AddHours(3),
                 CreateUserId = userId,
-                UserRoles = userRoles
+                UserRoles = new List<UserRoles> { userRoles }
             };
             _context.Users.Add(users);
             await _context.SaveChangesAsync();
@@ -92,7 +92,7 @@ namespace ERP_API.App.Service
             {
                 throw new KeyNotFoundException("المستخدم غير موجود");
             }
-            var permissions = await _UserService.GetUserPermissions(users.Id, users.UserRoles.RoleId);
+            var permissions = await _UserService.GetUserPermissions(users.Id, users.UserRoles.First().RoleId);
             TokenResponseDto? token = await jwt.RefreshTokensAsync(users, permissions);
             if (token == null)
             {

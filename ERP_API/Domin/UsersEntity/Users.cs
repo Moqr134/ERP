@@ -24,7 +24,7 @@ namespace ERP_API.Domin.UsersEntity
         public string? Token { get; set; }
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; } = null;
-        public UserRoles UserRoles { get; set; }
+        public ICollection<UserRoles> UserRoles { get; set; }
         public ICollection<UserPermissions> UserPermissions { get; set; }
     }
 }

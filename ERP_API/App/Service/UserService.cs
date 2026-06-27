@@ -6,7 +6,6 @@ using ERP_API.Domin.UsersEntity;
 using ERP_API.Infrastructure.Services;
 using ERPDto.PaigingDto;
 using ERPDto.UserDto;
-using Infrastructure.AppException;
 using Infrastructure.ORM;
 using Infrastructure.Service;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +26,6 @@ namespace ERP_API.App.Service
         public async Task<List<UserOut>> GetUsers(PageDto pageDto)
         {
             List<UserOut> users = await _context.Users.Where(x => x.IsRemoved == false)
-                
                 .Skip((pageDto.PageIndex - 1) * pageDto.PageSize)
                 .Take(pageDto.PageSize)
                 .Select(x => new UserOut

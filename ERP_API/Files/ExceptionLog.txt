@@ -1,1 +1,5 @@
-﻿
+﻿^[26/06/2026 02:42:36 ص]	[GET]	[localhost:7136]	[/api/Categories/GetAllCategories]	[404]	[لم يتم العثور على فئات]	[]	[{"Message":"لم يتم العثور على فئات KeyNotFound"}]$
+^[26/06/2026 03:20:39 ص]	[DELETE]	[localhost:7136]	[/api/Categories/DeleteCategory/1]	[500]	[Object reference not set to an instance of an object.]	[]	[{"Message":"Object reference not set to an instance of an object.","InnerMessage":null,"Data":{},"Source":"ERP_API","HelpLink":null,"HResult":-2147467261}]$
+^[26/06/2026 11:13:39 م]	[DELETE]	[localhost:7136]	[/api/Categories/DeleteCategory/1]	[500]	[Object reference not set to an instance of an object.]	[]	[{"Message":"Object reference not set to an instance of an object.","InnerMessage":null,"Data":{},"Source":"ERP_API","HelpLink":null,"HResult":-2147467261}]$
+^[26/06/2026 11:55:07 م]	[DELETE]	[localhost:7136]	[/api/Categories/DeleteCategory/1]	[500]	[Object reference not set to an instance of an object.]	[]	[{"Message":"Object reference not set to an instance of an object.","InnerMessage":null,"Data":{},"Source":"ERP_API","HelpLink":null,"HResult":-2147467261}]$
+^[27/06/2026 12:03:06 ص]	[GET]	[localhost:7136]	[/api/Categories/GetAllCategories]	[404]	[لم يتم العثور على فئات]	[]	[{"Message":"لم يتم العثور على فئات KeyNotFound"}]$

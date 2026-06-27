@@ -3,6 +3,7 @@ using ERP_API.App.IService;
 using ERP_API.App.Service;
 using Infrastructure.Cache;
 using Infrastructure.Mapping;
+using Infrastructure.Middleware;
 using Infrastructure.ORM;
 using Infrastructure.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -69,6 +70,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<ErrorHandler>();
 
 app.UseHttpsRedirection();
 
