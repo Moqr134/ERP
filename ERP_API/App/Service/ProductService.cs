@@ -19,28 +19,28 @@ namespace ERP_API.App.Service
         }
         private async Task<Product?> GetFullProduct(int id)
         {
-            Product? product = await _context.Products.FindAsync(id);
+            Product? product = await _context.Products.FirstOrDefaultAsync(x=>x.Id==id && !x.IsRemoved);
             return product;
         }
         private async Task<Product?> GetProductByName(string name)
         {
-            Product? product = await _context.Products.FirstOrDefaultAsync(p => p.Name == name);
+            Product? product = await _context.Products.FirstOrDefaultAsync(p => p.Name == name && !p.IsRemoved);
             return product;
         }
         private async Task<Product?> GetProductBySKU(string SKU)
         {
-            Product? product = await _context.Products.FirstOrDefaultAsync(x=>x.SKU == SKU);
+            Product? product = await _context.Products.FirstOrDefaultAsync(x=>x.SKU == SKU && !x.IsRemoved);
             return product;
         }
         private async Task<Product?> GetProductByBarcode(string Barcode)
         {
-            Product? product = await _context.Products.FirstOrDefaultAsync(x=>x.Barcode == Barcode);
+            Product? product = await _context.Products.FirstOrDefaultAsync(x=>x.Barcode == Barcode && !x.IsRemoved);
             return product;
         }
 
         public async Task CreateProduct(CreateProductModel product, int userId)
         {
-            Categories? categories = await _context.Categories.FindAsync(userId);
+            Categories? categories = await _context.Categories.FindAsync(product.CategoriesId);
             if (categories == null) 
                 throw new KeyNotFoundException("الفئة غير موجوده");
             Product? Newproduct = await GetProductBySKU(product.SKU);
@@ -55,18 +55,19 @@ namespace ERP_API.App.Service
             Newproduct.CurrentStock = 0;
             Newproduct.CreateDate = DateTime.UtcNow.AddHours(3);
             Newproduct.CreateUserId = userId;
+            _context.Products.Add(Newproduct);
+            await _context.SaveChangesAsync();
         }
-
         public async Task DeleteProduct(int id, int userId)
         {
             Product? product = await GetFullProduct(id);
             if (product == null) throw new KeyNotFoundException("حدث خطا اثناء جلب البيانات");
             product.RemoveDate = DateTime.UtcNow.AddHours(3);
+            product.IsRemoved = true;
             product.RemoveUserId = userId;
             _context.Products.Entry(product).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }
-
         public async Task<List<ProductDto>> GetAllProductsAsync(PageDto pageDto)
         {
             List<ProductDto> products = await _context.Products
@@ -105,7 +106,6 @@ namespace ERP_API.App.Service
             if (product == null) throw new KeyNotFoundException("المنتج غير موجود");
             return product;
         }
-
         public async Task UpdateProduct(UpdateProductModel product, int userId)
         {
             Product? UpdateProduct = await GetFullProduct(product.Id);
@@ -116,19 +116,19 @@ namespace ERP_API.App.Service
                 if(categories == null) throw new KeyNotFoundException("الفئة غير موجوده");
                 UpdateProduct.CategoriesId = product.CategoryId;
             }
-            if(product.SKU != product.SKU && product.SKU != null)
+            if(product.SKU != UpdateProduct.SKU && UpdateProduct.SKU != null)
             {
                 Product? SKU = await GetProductBySKU(product.SKU);
                 if (SKU != null) throw new DuplicateException("هذا ال SKU مستخدم في منتج اخر");
                 UpdateProduct.SKU = product.SKU;
             }
-            if(product.Barcode != product.Barcode && product.Barcode != null)
+            if(product.Barcode != UpdateProduct.Barcode && UpdateProduct.Barcode != null)
             {
                 Product? Barcode = await GetProductByBarcode(product.Barcode);
                 if (Barcode != null) throw new DuplicateException("هذا الباركود مستخدم في منتج اخر");
                 UpdateProduct.Barcode = product.Barcode;
             }
-            if(product.Name != product.Name && product.Name != null)
+            if(UpdateProduct.Name == product.Name && UpdateProduct.Name != null)
             {
                 Product? Name = await GetProductByName(product.Name);
                 if (Name != null) throw new DuplicateException("هذا الاسم مستخدم في منتج اخر");

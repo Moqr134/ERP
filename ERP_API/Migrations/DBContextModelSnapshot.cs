@@ -101,7 +101,7 @@ namespace ERP_API.Migrations
 
                     b.HasIndex("PermissionId");
 
-                    b.ToTable("RolePermissions");
+                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("ERP_API.Domin.ProductEntity.Product", b =>
@@ -236,7 +236,7 @@ namespace ERP_API.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("UserRoles");
+                    b.ToTable("UserRoles", (string)null);
                 });
 
             modelBuilder.Entity("ERP_API.Domin.StockTransactionsEntity.StockTransactions", b =>
