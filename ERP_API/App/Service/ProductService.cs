@@ -2,6 +2,7 @@
 using ERP_API.App.IService;
 using ERP_API.Domin.CategoriesEntity;
 using ERP_API.Domin.ProductEntity;
+using ERP_API.Domin.UsersEntity;
 using ERP_API.Infrastructure.Services;
 using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
@@ -32,12 +33,12 @@ namespace ERP_API.App.Service
             Product? product = await _context.Products.FirstOrDefaultAsync(x=>x.SKU == SKU && !x.IsRemoved);
             return product;
         }
-        private async Task<Product?> GetProductByBarcode(string Barcode)
+
+        public async Task<Product?> GetProductByBarcode(string Barcode)
         {
             Product? product = await _context.Products.FirstOrDefaultAsync(x=>x.Barcode == Barcode && !x.IsRemoved);
             return product;
         }
-
         public async Task CreateProduct(CreateProductModel product, int userId)
         {
             Categories? categories = await _context.Categories.FindAsync(product.CategoriesId);
@@ -138,6 +139,40 @@ namespace ERP_API.App.Service
             UpdateProduct.UpdateUserId = userId;
             _context.Products.Entry(UpdateProduct).State = EntityState.Modified;
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<ProductStockLadgerDto>> GetProductStockLedger(int id)
+        {
+            Product? product = await GetFullProduct(id);
+            if (product == null) throw new KeyNotFoundException("لم يتم العثور على المنتج");
+            List<ProductStockLadgerDto> dto = await _context.StockTransactions.Where(s => s.ProductId == id)
+               .Select(x => new ProductStockLadgerDto
+               {
+                   Notes = x.Notes,
+                   CreateDate = x.CreateDate,
+                   Quantity = x.Quantity,
+                   TransactionType = x.TransactionType,
+                   ReferenceId = x.ReferenceId,
+                   ProductName = product.Name,
+               }).ToListAsync();
+            return dto;
+        }
+
+        public async Task<List<ProductDto>> GetLowStockProduct()
+        {
+            List<ProductDto> products = await _context.Products.Where(x => x.CurrentStock <= x.MinStockLevel)
+                .Select(x => new ProductDto
+                {
+                    Name = x.Name,
+                    Barcode = x.Barcode,
+                    CostPrice = x.CostPrice,
+                    CurrentStock = x.CurrentStock,
+                    Id = x.Id,
+                    MinStockLevel = x.MinStockLevel,
+                    SellingPrice = x.SellingPrice,
+                    SKU = x.SKU,
+                }).ToListAsync();
+            return products;
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using ERP_API.App.IService;
+using ERP_API.Domin.ProductEntity;
 using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
 using Infrastructure.Cache;
@@ -16,7 +17,7 @@ namespace ERP_API.Controllers
     public class ProductController : MasterController
     {
         private readonly IProductService _productService;
-        public ProductController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper,IProductService productService) : base(userService, cache, context, mapper)
+        public ProductController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, IProductService productService) : base(userService, cache, context, mapper)
         {
             _productService = productService;
         }
@@ -36,10 +37,10 @@ namespace ERP_API.Controllers
         }
         [HttpPost("CreateProduct")]
         [Authorize]
-        public async Task<IActionResult> CreateProduct([FromBody]CreateProductModel model)
+        public async Task<IActionResult> CreateProduct([FromBody] CreateProductModel model)
         {
             if (_UserId == 0) GetUserId();
-            await _productService.CreateProduct(model,_UserId);
+            await _productService.CreateProduct(model, _UserId);
             return Ok("تم انشاء المنتج");
         }
         [HttpPost("UpdateProduct")]
@@ -53,9 +54,32 @@ namespace ERP_API.Controllers
         [HttpDelete("DeleteProduct/{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
-            if(_UserId == 0) GetUserId();
+            if (_UserId == 0) GetUserId();
             await _productService.DeleteProduct(id, _UserId);
             return Ok("تم حذف المنتج");
+        }
+        [HttpGet("GetProductByBarcode/{Barcode}")]
+        [Authorize]
+        public async Task<IActionResult> GetProductByBarcode(string Barcode)
+        {
+            Product? product = await _productService.GetProductByBarcode(Barcode);
+            if(product == null) throw new KeyNotFoundException("لم يتم العثور على المادة");
+            ProductDto dto = _mapper.Map<ProductDto>(product);
+            return Ok(dto);
+        }
+        [HttpGet("GetProductStockLedger/{id}")]
+        [Authorize]
+        public async Task<IActionResult> GetProductById(int id)
+        {
+            List<ProductStockLadgerDto> dtos = await _productService.GetProductStockLedger(id);
+            return Ok(dtos);
+        }
+        [HttpGet("GetLowStockProduct")]
+        [Authorize]
+        public async Task<IActionResult> GetLowStockProduct()
+        {
+            List<ProductDto> dtos = await _productService.GetLowStockProduct();
+            return Ok(dtos);
         }
     }
 }

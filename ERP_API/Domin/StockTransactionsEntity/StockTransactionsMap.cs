@@ -24,8 +24,6 @@ namespace ERP_API.Domin.StockTransactionsEntity
             builder.Property(x => x.ReferenceId).IsRequired();
             builder.Property(x => x.Notes).HasMaxLength(250);
             builder.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasQueryFilter(x => x.IsRemoved == false);
         }
     }
 }
