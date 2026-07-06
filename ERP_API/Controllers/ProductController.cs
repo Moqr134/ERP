@@ -43,7 +43,7 @@ namespace ERP_API.Controllers
             await _productService.CreateProduct(model, _UserId);
             return Ok("تم انشاء المنتج");
         }
-        [HttpPost("UpdateProduct")]
+        [HttpPut("UpdateProduct")]
         [Authorize]
         public async Task<IActionResult> UpdateProduct([FromBody] UpdateProductModel model)
         {

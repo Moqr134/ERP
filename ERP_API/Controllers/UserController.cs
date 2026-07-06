@@ -25,7 +25,7 @@ namespace ERP_API.Controllers
             List<UserOut> users = await _usersService.GetUsers(dto);
             return Ok(users);
         }
-        [HttpPost("UpdateUser")]
+        [HttpPut("UpdateUser")]
         public async Task<IActionResult> UpdateUser([FromBody]UpdateUserModel model)
         {
             if(_UserId==0) GetUserId();
@@ -39,7 +39,7 @@ namespace ERP_API.Controllers
             await _usersService.DeleteUser(userId, _UserId);
             return Ok("تم حذف المستخدم بنجاح");
         }
-        [HttpPost("UpdateUserPermission")]
+        [HttpPut("UpdateUserPermission")]
         public async Task<IActionResult> UpdateUserPermission([FromBody]List<UserPermissionDto> userPermission)
         {
             if (_UserId == 0) GetUserId();

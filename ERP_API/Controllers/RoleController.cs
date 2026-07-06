@@ -47,7 +47,7 @@ namespace ERP_API.Controllers
             await _roleService.CreateRole(roleDto, _UserId);
             return Ok();
         }
-        [HttpPost("UpdateRole")]
+        [HttpPut("UpdateRole")]
         [Authorize(Roles = "FullAccess,UpdateRole")]
         public async Task<IActionResult> UpdateRole([FromBody] RoleDto roleDto)
         {

@@ -3,6 +3,7 @@ using ERP_API.App.IService;
 using ERPDto.CategoriesDto;
 using Infrastructure.Cache;
 using Infrastructure.ORM;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SecondApi.Controllers;
@@ -13,18 +14,20 @@ namespace ERP_API.Controllers
     [ApiController]
     public class CategoriesController : MasterController
     {
-        ICategoriesService _categoriesService;
+        private ICategoriesService _categoriesService;
         public CategoriesController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, ICategoriesService categoriesService) : base(userService, cache, context, mapper)
         {
             _categoriesService = categoriesService;
         }
         [HttpGet("GetAllCategories")]
+        [Authorize]
         public async Task<IActionResult> GetAllCategories()
         {
             List<CategoryDto> categories = await _categoriesService.GetAllCategories();
             return Ok(categories);
         }
         [HttpGet("GetCategoryById/{id}")]
+        [Authorize]
         public async Task<IActionResult> GetCategoryById(int id)
         {
             CategoryDto category = await _categoriesService.GetCategoryById(id);
@@ -37,7 +40,7 @@ namespace ERP_API.Controllers
             await _categoriesService.CreateCategory(category, _UserId);
             return Ok();
         }
-        [HttpPost("UpdateCategory")]
+        [HttpPut("UpdateCategory")]
         public async Task<IActionResult> UpdateCategory([FromBody] CategoryDto category)
         {
             if (_UserId == 0) GetUserId();

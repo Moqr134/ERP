@@ -4,12 +4,13 @@ using ERP_API.Domin.PermissionsEntity;
 using ERP_API.Domin.ProductEntity;
 using ERP_API.Domin.RoleEntity;
 using ERP_API.Domin.StockTransactionsEntity;
+using ERP_API.Domin.SuppliersEntity;
 using ERP_API.Domin.UsersEntity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.ORM;
 
-public class DBContext:DbContext
+public class DBContext : DbContext
 {
     public DBContext(DbContextOptions<DBContext> options) : base(options)
     {
@@ -26,6 +27,7 @@ public class DBContext:DbContext
         modelBuilder.ApplyConfiguration(new UserRolesMap());
         modelBuilder.ApplyConfiguration(new UserPermissionsMap());
         modelBuilder.ApplyConfiguration(new RolePermissionsMap());
+        modelBuilder.ApplyConfiguration(new SuppliersMap());
     }
     public DbSet<Users> Users { get; set; }
     public DbSet<Categories> Categories { get; set; }
@@ -36,4 +38,5 @@ public class DBContext:DbContext
     public DbSet<RolePermissions> RolePermissions { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<Permission> Permissions { get; set; }
+    public DbSet<Suppliers> Suppliers { get; set; }
 }
