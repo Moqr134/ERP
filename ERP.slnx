@@ -4,4 +4,5 @@
   </Folder>
   <Project Path="ERPDto/ERPDto.csproj" Id="1ffce923-9ffb-4f5a-b82e-4762a81df898" />
   <Project Path="ERP_API/ERP_API.csproj" />
+  <Project Path="ERP_Clint/ERP_Clint.csproj" Id="2240b177-b23a-4a12-b0f6-a0426a133067" />
 </Solution>

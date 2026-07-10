@@ -1,0 +1,108 @@
+<ul class="nav-menu">
+
+    <li class="nav-menu__item">
+        <NavLink class="nav-menu__link" href="" Match="NavLinkMatch.All">
+            <span class="nav-icon">🏠</span>
+            <span>الرئيسية</span>
+        </NavLink>
+    </li>
+
+    <li class="nav-menu__section">العمليات</li>
+
+    <li class="nav-menu__item">
+        <NavLink class="nav-menu__link" href="sales">
+            <span class="nav-icon">💰</span>
+            <span>المبيعات</span>
+        </NavLink>
+    </li>
+
+    <li class="nav-menu__item">
+        <NavLink class="nav-menu__link" href="inventory">
+            <span class="nav-icon">📦</span>
+            <span>المخزون</span>
+        </NavLink>
+    </li>
+
+    <li class="nav-menu__item">
+        <NavLink class="nav-menu__link" href="accounting">
+            <span class="nav-icon">🧾</span>
+            <span>المحاسبة</span>
+        </NavLink>
+    </li>
+
+    <li class="nav-menu__item">
+        <NavLink class="nav-menu__link" href="hr">
+            <span class="nav-icon">👥</span>
+            <span>الموارد البشرية</span>
+        </NavLink>
+    </li>
+
+    <li class="nav-menu__section">التقارير والإعدادات</li>
+
+    <li class="nav-menu__item">
+        <NavLink class="nav-menu__link" href="reports">
+            <span class="nav-icon">📊</span>
+            <span>التقارير</span>
+        </NavLink>
+    </li>
+
+    <li class="nav-menu__item">
+        <NavLink class="nav-menu__link" href="settings">
+            <span class="nav-icon">⚙️</span>
+            <span>الإعدادات</span>
+        </NavLink>
+    </li>
+
+</ul>
+
+<style>
+    .nav-menu {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .nav-menu__section {
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba(255,255,255,0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 16px 12px 6px;
+    }
+
+    .nav-menu__link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        color: rgba(255,255,255,0.65);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        transition: background .15s, color .15s;
+    }
+
+    .nav-menu__link:hover {
+        background: rgba(255,255,255,0.05);
+        color: #fff;
+    }
+
+    .nav-icon {
+        font-size: 15px;
+        width: 20px;
+        text-align: center;
+    }
+
+    /* حالة الرابط النشط - Blazor يضيف هذا الكلاس تلقائياً */
+    .nav-menu__link.active {
+        background: linear-gradient(135deg, rgba(249,115,22,0.18), rgba(194,65,12,0.12));
+        color: #fff;
+        border: 1px solid rgba(249,115,22,0.35);
+        box-shadow: inset 0 0 0 1px rgba(249,115,22,0.08);
+    }
+</style>

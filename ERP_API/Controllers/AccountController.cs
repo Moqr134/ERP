@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SecondApi.Controllers;
 using SherdProject.DTO;
+using System.Security.Claims;
 
 namespace ERP_API.Controllers
 {
@@ -84,6 +85,25 @@ namespace ERP_API.Controllers
             Response.Cookies.Append("RefreshToken", token.RefreshToken, refreshCookieOptions);
             UserManager = user;
             return Ok("تم تسجيل الدخول بنجاح");
+        }
+        [HttpGet("userinfo")]
+        [Authorize]
+        public async Task<IActionResult> GetUserInfo()
+        {
+            var roles = User.Claims
+                .Where(c => c.Type == ClaimTypes.Role || c.Type == "role")
+                .Select(c => c.Value)
+                .ToList();
+
+            var userInfo = new UserInfoResponse
+            {
+                IsAuthenticated = true,
+                UserName = User.Identity?.Name ?? "User",
+                Email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value ?? "",
+                Roles = roles
+            };
+
+            return Ok(userInfo);
         }
     }
 }

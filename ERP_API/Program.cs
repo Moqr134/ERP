@@ -61,7 +61,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     };
                 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowWepApp",
+        policy =>
+        {
+            policy.WithOrigins("https://localhost:7107")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
 
+        });
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -74,6 +85,8 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ErrorHandler>();
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowWepApp");
 
 app.UseAuthorization();
 
