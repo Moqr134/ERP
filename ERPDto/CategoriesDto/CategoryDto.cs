@@ -9,5 +9,6 @@ namespace ERPDto.CategoriesDto
         public string Name { get; set; }
         [StringValidate(4,50,true)]
         public string Description { get; set; }
+        public int ProductCount { get; set; }
     }
 }

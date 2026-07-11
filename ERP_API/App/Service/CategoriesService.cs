@@ -45,7 +45,7 @@ namespace ERP_API.App.Service
             {
                 throw new KeyNotFoundException("لم يتم العثور على الفئة");
             }
-            if(category.Products != null)
+            if(category.Products.Count > 0)
             {
                 throw new InvalidOperationException("لا يمكن حذف الفئة لأنها تحتوي على منتجات مرتبطة بها.");
             }
@@ -58,12 +58,14 @@ namespace ERP_API.App.Service
 
         public async Task<List<CategoryDto>> GetAllCategories()
         {
-            List<CategoryDto> categoryDtos = await _context.Categories.Where(c => !c.IsRemoved)
+            List<CategoryDto> categoryDtos = await _context.Categories
+                .Include(p => p.Products)
                 .Select(c => new CategoryDto
                 {
                     Id = c.Id,
                     Name = c.Name,
-                    Description = c.Description
+                    Description = c.Description,
+                    ProductCount = c.Products.Count
                 }).ToListAsync();
             if (categoryDtos.Count == 0|| categoryDtos == null)
             {

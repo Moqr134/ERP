@@ -36,6 +36,7 @@ namespace ERP_Clint.Pages.AccountPages
                 {
                     costumAuth.NotifyUserAuthenticationChanged();
                     NavigationManager.NavigateTo("/");
+                    NavigationManager.Refresh();
                 }
             }
             finally

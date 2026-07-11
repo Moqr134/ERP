@@ -11,16 +11,51 @@
 
     <li class="nav-menu__item">
         <NavLink class="nav-menu__link" href="sales">
+            <span class="nav-icon">🤵</span>
+            <span>المستخدمون</span>
+        </NavLink>
+    </li>
+
+    <li class="nav-menu__item">
+        <NavLink class="nav-menu__link" href="sales">
             <span class="nav-icon">💰</span>
             <span>المبيعات</span>
         </NavLink>
     </li>
 
     <li class="nav-menu__item">
-        <NavLink class="nav-menu__link" href="inventory">
+        <button type="button" class="nav-menu__link nav-menu__toggle @(isInventoryOpen ? "open" : "")" @onclick="ToggleInventory">
             <span class="nav-icon">📦</span>
             <span>المخزون</span>
-        </NavLink>
+            <span class="nav-arrow">›</span>
+        </button>
+
+        <ul class="nav-submenu @(isInventoryOpen ? "open" : "")">
+            <li>
+                <NavLink class="nav-submenu__link" href="inventory/categories">
+                    <span class="nav-icon">🗂️</span>
+                    <span>الأصناف</span>
+                </NavLink>
+            </li>
+            <li>
+                <NavLink class="nav-submenu__link" href="inventory/products">
+                    <span class="nav-icon">🏷️</span>
+                    <span>المنتجات</span>
+                </NavLink>
+            </li>
+            <li>
+                <NavLink class="nav-submenu__link" href="inventory/suppliers">
+                    <span class="nav-icon">🚚</span>
+                    <span>الموردون</span>
+                </NavLink>
+            </li>
+            <li>
+                <NavLink class="nav-submenu__link" href="inventory/stock-movements">
+                    <span class="nav-icon">🔄</span>
+                    <span>حركات المخزون</span>
+                </NavLink>
+            </li>
+        </ul>
     </li>
 
     <li class="nav-menu__item">
@@ -37,7 +72,7 @@
         </NavLink>
     </li>
 
-    <li class="nav-menu__section">التقارير والإعدادات</li>
+    @* <li class="nav-menu__section">التقارير والإعدادات</li>
 
     <li class="nav-menu__item">
         <NavLink class="nav-menu__link" href="reports">
@@ -51,9 +86,9 @@
             <span class="nav-icon">⚙️</span>
             <span>الإعدادات</span>
         </NavLink>
-    </li>
+    </li> *@
 
-</ul>
+</ul> 
 
 <style>
     .nav-menu {
@@ -87,10 +122,10 @@
         transition: background .15s, color .15s;
     }
 
-    .nav-menu__link:hover {
-        background: rgba(255,255,255,0.05);
-        color: #fff;
-    }
+        .nav-menu__link:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
 
     .nav-icon {
         font-size: 15px;
@@ -105,4 +140,95 @@
         border: 1px solid rgba(249,115,22,0.35);
         box-shadow: inset 0 0 0 1px rgba(249,115,22,0.08);
     }
+
+    /* ===== زر القائمة القابلة للطي (Toggle) ===== */
+    .nav-menu__toggle {
+        width: 100%;
+        background: none;
+        border: none;
+        font-family: 'Cairo', sans-serif;
+        cursor: pointer;
+        text-align: right;
+    }
+
+    .nav-arrow {
+        margin-right: auto;
+        font-size: 13px;
+        color: rgba(255,255,255,0.35);
+        transition: transform 0.2s ease;
+    }
+
+    .nav-menu__toggle.open .nav-arrow {
+        transform: rotate(-90deg);
+    }
+
+    .nav-menu__toggle.open {
+        color: #fff;
+        background: rgba(255,255,255,0.04);
+    }
+
+    /* ===== القائمة الفرعية ===== */
+    .nav-submenu {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.25s ease;
+    }
+
+        .nav-submenu.open {
+            max-height: 260px; /* يكفي لأربع عناصر، زدها لو أضفت المزيد */
+        }
+
+    .nav-submenu__link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 12px 9px 12px;
+        margin: 3px 0 3px 0;
+        margin-right: 14px;
+        border-right: 2px solid rgba(255,255,255,0.08);
+        color: rgba(255,255,255,0.5);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition: background .15s, color .15s, border-color .15s;
+    }
+
+        .nav-submenu__link:hover {
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+        }
+
+        .nav-submenu__link.active {
+            color: #f97316;
+            border-right: 2px solid #f97316;
+            background: rgba(249,115,22,0.08);
+        }
+
+        .nav-submenu__link .nav-icon {
+            font-size: 13px;
+        }
 </style>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private bool isInventoryOpen;
+
+    protected override void OnInitialized()
+    {
+        // يفتح القائمة تلقائياً إذا المستخدم أصلاً واقف بأي صفحة من صفحات المخزون
+        var currentPath = new Uri(Navigation.Uri).AbsolutePath;
+        if (currentPath.Contains("/inventory/", StringComparison.OrdinalIgnoreCase))
+        {
+            isInventoryOpen = true;
+        }
+    }
+
+    private void ToggleInventory()
+    {
+        isInventoryOpen = !isInventoryOpen;
+    }
+}
