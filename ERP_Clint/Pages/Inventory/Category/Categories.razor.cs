@@ -17,7 +17,6 @@ namespace ERP_Clint.Pages.Inventory.Category
         private bool isModalOpen;
         private CategoryDto? categoryBeingEdited;
 
-        // Modal حذف
         private bool isDeleteModalOpen;
         private CategoryDto? categoryBeingDeleted;
 
@@ -102,7 +101,12 @@ namespace ERP_Clint.Pages.Inventory.Category
         private async Task HandleDeleteConfirmed()
         {
             if (categoryBeingDeleted is null) return;
-
+            if (categoryBeingDeleted.ProductCount > 0)
+            {
+                loadError = "لا يمكن حذف الفئة لأنها تحتوي على منتجات مرتبطة بها.";
+                isDeleteModalOpen = false;
+                return;
+            }
             try
             {
                 var response = await _catigoryService.DeleteCategoryAsync(categoryBeingDeleted.Id);
@@ -113,7 +117,7 @@ namespace ERP_Clint.Pages.Inventory.Category
                 }
                 else
                 {
-                    loadError = response.Content.ReadAsStringAsync().Result.ToString();
+                    loadError = "حدث خطا ما";
                 }
             }
             finally
