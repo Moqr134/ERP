@@ -1,0 +1,480 @@
+@page "/inventory/products"
+@using ERP_Clint.Pages.Inventory.Category
+@using Microsoft.AspNetCore.Authorization
+@layout MainLayout
+@attribute [Authorize]
+@inject HttpClient Http
+
+ @if (!isLoading && loadError is null && productsInfo is not null)
+{
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-card--total">
+            <div class="kpi-card__icon">🏷️</div>
+            <div class="kpi-card__value">@productsInfo.TotalProducts</div>
+            <div class="kpi-card__label">إجمالي المنتجات</div>
+        </div>
+        <div class="kpi-card kpi-card--low">
+            <div class="kpi-card__icon">⚠️</div>
+            <div class="kpi-card__value">@productsInfo.ProductsCountLissMinStock</div>
+            <div class="kpi-card__label">وصلت للحد الأدنى</div>
+        </div>
+        <div class="kpi-card kpi-card--out">
+            <div class="kpi-card__icon">⛔</div>
+            <div class="kpi-card__value">@productsInfo.ProductsStockOut</div>
+            <div class="kpi-card__label">نافذة من المخزون</div>
+        </div>
+        <div class="kpi-card kpi-card--value">
+            <div class="kpi-card__icon">💵</div>
+            <div class="kpi-card__value">@productsInfo.ProductsCostCount</div>
+            <div class="kpi-card__label">قيمة المخزون الإجمالية</div>
+        </div>
+    </div>
+} 
+<div class="table-panel">
+    <div class="table-panel__header">
+        <h3>قائمة المنتجات</h3>
+        <div class="header-actions">
+            @* <select class="filter-select" @onchange="OnCategoryFilterChanged">
+                <option value="0">كل الأقسام</option>
+                @foreach (var category in categories)
+                {
+                    <option value="@category.Id">@category.Name</option>
+                }
+            </select>
+            <div class="search-box">
+                <span>🔍</span>
+                <input type="text" value="@searchTerm" @oninput="OnSearchChanged" placeholder="ابحث بالاسم أو الكود..." />
+            </div> *@
+            <button class="btn-primary" @onclick="OpenAddModal">+ إضافة منتج</button>
+        </div>
+    </div>
+ 
+    @if (isLoading)
+    {
+        <div class="state-box">جاري تحميل المنتجات...</div>
+    }
+    else if (loadError is not null)
+    {
+        <div class="state-box state-box--error">
+            ⚠ @loadError
+            <button class="btn-secondary" @onclick="LoadAll">إعادة المحاولة</button>
+        </div>
+    }
+    else if (FilteredProducts.Count == 0)
+    {
+        <div class="state-box">لا توجد منتجات مطابقة</div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>السعر</th>
+                    <th>الحالة</th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in FilteredProducts)
+                {
+                    <tr>
+                        <td>
+                            <div class="prod-cell">
+                                <div class="prod-icon">🏷️</div>
+                                <div>
+                                    <div class="prod-name">@product.Name</div>
+                                    <div class="prod-code">#@product.Barcode</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>@product.CurrentStock</td>
+                        <td>@product.SellingPrice</td>
+                        <td>
+                            @switch (product.CurrentStock < product.MinStockLevel ? "منخفض" : product.CurrentStock == 0 ? "نافذ" : "متوفر")
+                            {
+                                case "متوفر":
+                                    <span class="badge badge--ok">متوفر</span>
+                                    break;
+                                case "منخفض":
+                                    <span class="badge badge--mid">منخفض</span>
+                                    break;
+                                default:
+                                    <span class="badge badge--low">نافذ</span>
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <button @onclick="() => OpenEditModal(product)" title="تعديل">✏️</button>
+                                <button class="danger" @onclick="() => OpenDeleteModal(product)" title="حذف">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="pager">
+            <span class="pager__info">
+                عرض @(((page.PageIndex - 1) *page.PageSize) + 1)–@(Math.Min(page.PageIndex * page.PageSize, products[0].totalPages)) من أصل @products[0].totalCount منتج
+            </span>
+
+            <div class="pager__controls">
+                <button class="pager__btn" disabled="@(page.PageIndex == 1)" @onclick="() => GoToPage(page.PageIndex - 1)">‹ السابق</button>
+
+                @foreach (var pageNumber in GetVisiblePageNumbers())
+                {
+                    <button class="pager__btn @(pageNumber == page.PageIndex ? "active" : "")"
+                            @onclick="() => GoToPage(pageNumber)">
+                        @pageNumber
+                    </button>
+                }
+
+                <button class="pager__btn" disabled="@(page.PageIndex == products[0].totalPages || products[0].totalPages == 0)" @onclick="() => GoToPage(page.PageIndex + 1)">التالي ›</button>
+            </div>
+        </div>
+    }
+</div>
+
+<ProductModal IsOpen="isModalOpen"
+              EditingProduct="productBeingEdited"
+              Categories="categories"
+              OnSaved="HandleSaved"
+              OnClose="CloseModal" />
+
+<DeleteConfirmModal IsOpen="isDeleteModalOpen"
+                     EntityLabel="المنتج"
+                     TargetName="@(productBeingDeleted?.Name ?? "")"
+                     OnConfirm="HandleDeleteConfirmed"
+                     OnCancel="CloseDeleteModal" />
+
+<style>
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+        margin-bottom: 20px;
+    }
+
+    .kpi-card {
+        background: #141a22;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        padding: 16px 18px;
+    }
+
+    .kpi-card__icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+
+    .kpi-card--total .kpi-card__icon {
+        background: rgba(249,115,22,0.12);
+    }
+
+    .kpi-card--low .kpi-card__icon {
+        background: rgba(234, 179, 8, 0.12);
+    }
+
+    .kpi-card--out .kpi-card__icon {
+        background: rgba(239, 68, 68, 0.12);
+    }
+
+    .kpi-card--value .kpi-card__icon {
+        background: rgba(34, 197, 94, 0.12);
+    }
+
+    .kpi-card__value {
+        font-size: 22px;
+        font-weight: 800;
+        color: #fff;
+        margin-bottom: 2px;
+    }
+
+    .kpi-card__label {
+        font-size: 12px;
+        color: rgba(255,255,255,0.5);
+    }
+
+    .table-panel {
+        background: #141a22;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .table-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+        .table-panel__header h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+    .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-select, .search-box {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: #fff;
+        font-family: 'Cairo', sans-serif;
+    }
+
+        .filter-select option {
+            background: #141a22;
+        }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 220px;
+    }
+
+        .search-box input {
+            background: none;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px;
+            width: 100%;
+        }
+
+            .search-box input::placeholder {
+                color: rgba(255,255,255,0.3);
+            }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #f97316, #c2410c);
+        border: none;
+        color: #fff;
+        font-weight: 700;
+        padding: 9px 18px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-family: 'Cairo', sans-serif;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-secondary {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: #e8edf2;
+        font-weight: 600;
+        padding: 9px 18px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-family: 'Cairo', sans-serif;
+        cursor: pointer;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead th {
+        background: rgba(255,255,255,0.03);
+        color: rgba(255,255,255,0.5);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 12px 20px;
+        text-align: right;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    tbody td {
+        padding: 14px 20px;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        color: #e8edf2;
+    }
+
+    tbody tr:hover {
+        background: rgba(249, 115, 22, 0.04);
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .prod-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .prod-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: rgba(249,115,22,0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+    }
+
+    .prod-name {
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .prod-code {
+        font-size: 11px;
+        color: rgba(255,255,255,0.4);
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .badge--ok {
+        background: rgba(34, 197, 94, 0.12);
+        color: #4ade80;
+    }
+
+    .badge--mid {
+        background: rgba(234, 179, 8, 0.12);
+        color: #facc15;
+    }
+
+    .badge--low {
+        background: rgba(239, 68, 68, 0.12);
+        color: #f87171;
+    }
+
+    .row-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+        .row-actions button {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #fff;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+            .row-actions button:hover {
+                background: rgba(249,115,22,0.15);
+                border-color: rgba(249,115,22,0.4);
+            }
+
+            .row-actions button.danger:hover {
+                background: rgba(239,68,68,0.15);
+                border-color: rgba(239,68,68,0.4);
+            }
+
+    .state-box {
+        padding: 40px 20px;
+        text-align: center;
+        color: rgba(255,255,255,0.45);
+        font-size: 14px;
+    }
+
+    .state-box--error {
+        color: #f87171;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+
+    /* ===== Pager ===== */
+    .pager {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .pager__info {
+        font-size: 12px;
+        color: rgba(255,255,255,0.4);
+    }
+
+    .pager__controls {
+        display: flex;
+        gap: 6px;
+    }
+
+    .pager__btn {
+        min-width: 34px;
+        height: 34px;
+        padding: 0 10px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        color: #e8edf2;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'Cairo', sans-serif;
+    }
+
+        .pager__btn:hover:not(:disabled) {
+            background: rgba(249,115,22,0.12);
+            border-color: rgba(249,115,22,0.35);
+        }
+
+        .pager__btn.active {
+            background: linear-gradient(135deg, #f97316, #c2410c);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .pager__btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+    @@media (max-width: 900px) {
+        .kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+

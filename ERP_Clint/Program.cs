@@ -11,6 +11,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ICatigoryService, CatigoryService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<CostumAuth>();
 builder.Services.AddScoped(sp =>
     new HttpClient

@@ -17,5 +17,7 @@ namespace ERPDto.ProductsDto
         public int CurrentStock { get; set; }
         public int MinStockLevel { get; set; }
         public int CategoriesId { get; set; }
+        public int totalCount { get; set; } = 0;
+        public int totalPages { get; set; } = 0;
     }
 }

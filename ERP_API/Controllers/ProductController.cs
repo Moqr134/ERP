@@ -21,9 +21,9 @@ namespace ERP_API.Controllers
         {
             _productService = productService;
         }
-        [HttpGet("GetAllProductsAsync")]
+        [HttpPost("GetAllProductsAsync")]
         [Authorize]
-        public async Task<IActionResult> GetAllProductsAsync([FromQuery] PageDto pageDto)
+        public async Task<IActionResult> GetAllProductsAsync([FromBody] PageDto pageDto)
         {
             List<ProductDto> products = await _productService.GetAllProductsAsync(pageDto);
             return Ok(products);
@@ -81,5 +81,13 @@ namespace ERP_API.Controllers
             List<ProductDto> dtos = await _productService.GetLowStockProduct();
             return Ok(dtos);
         }
+        [HttpGet("GetProductsInfo")]
+        [Authorize]
+        public async Task<IActionResult> GetProductsInfo()
+        {
+            ProductsInfo info = await _productService.GetProductsInfo();
+            return Ok(info);
+        }
+        
     }
 }

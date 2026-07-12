@@ -87,6 +87,8 @@ namespace ERP_API.App.Service
                     CategoriesId = x.CategoriesId,
                 }).ToListAsync();
             if (products == null) throw new KeyNotFoundException("المنتج غير موجود");
+            products[0].totalCount = await _context.Products.CountAsync();
+            products[0].totalPages = (int)Math.Ceiling((double)products[0].totalCount / pageDto.PageSize);
             return products;
         }
         public async Task<ProductDto> GetProductByIdAsync(int id)
@@ -129,7 +131,7 @@ namespace ERP_API.App.Service
                 if (Barcode != null) throw new DuplicateException("هذا الباركود مستخدم في منتج اخر");
                 UpdateProduct.Barcode = product.Barcode;
             }
-            if(UpdateProduct.Name == product.Name && UpdateProduct.Name != null)
+            if(UpdateProduct.Name != product.Name && UpdateProduct.Name != null)
             {
                 Product? Name = await GetProductByName(product.Name);
                 if (Name != null) throw new DuplicateException("هذا الاسم مستخدم في منتج اخر");
@@ -137,6 +139,7 @@ namespace ERP_API.App.Service
             }
             UpdateProduct.UpdateDate = DateTime.UtcNow.AddHours(3);
             UpdateProduct.UpdateUserId = userId;
+            UpdateProduct.SellingPrice = product.Price;
             _context.Products.Entry(UpdateProduct).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }
@@ -173,6 +176,16 @@ namespace ERP_API.App.Service
                     SKU = x.SKU,
                 }).ToListAsync();
             return products;
+        }
+
+        public async Task<ProductsInfo> GetProductsInfo()
+        {
+            ProductsInfo productsInfo = new ProductsInfo();
+            productsInfo.TotalProducts = await _context.Products.CountAsync();
+            productsInfo.ProductsStockOut = await _context.Products.CountAsync(p => p.CurrentStock == 0);
+            productsInfo.ProductsCountLissMinStock = await _context.Products.CountAsync(p => p.CurrentStock < p.MinStockLevel);
+            productsInfo.ProductsCostCount = await _context.Products.Where(p=>p.CurrentStock > 0).SumAsync(p => p.SellingPrice * p.CurrentStock);
+            return productsInfo;
         }
     }
 }
