@@ -2,6 +2,7 @@ using AutoMapper;
 using ERP_API.App.IService;
 using ERP_API.App.Service;
 using Infrastructure.Cache;
+using Infrastructure.JWT;
 using Infrastructure.Mapping;
 using Infrastructure.Middleware;
 using Infrastructure.ORM;
@@ -12,6 +13,14 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+
+DBConn.ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+
+var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
+    ?? throw new InvalidOperationException("Jwt settings are not configured.");
+
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 
 builder.Services.AddControllers();
 
@@ -35,17 +44,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     cfg.RequireHttpsMetadata = false;
                     cfg.SaveToken = true;
 
-                    byte[] symmetrickey = Convert.FromBase64String(DBConn.SecretKey);
+                    byte[] symmetrickey = Convert.FromBase64String(jwtSettings.SecretKey);
                     SymmetricSecurityKey securityKey = new SymmetricSecurityKey(symmetrickey);
 
                     cfg.TokenValidationParameters = new TokenValidationParameters()
                     {
                         IssuerSigningKey = securityKey,
-                        ValidIssuer = "ERP",
-                        ValidAudience = "Users",
+                        ValidIssuer = jwtSettings.Issuer,
+                        ValidAudience = jwtSettings.Audience,
                         ValidateLifetime = true,
                         RequireExpirationTime = true,
-                        ClockSkew = TimeSpan.FromDays(10)
+                        ClockSkew = TimeSpan.FromMinutes(2)
                     };
                     cfg.Events = new JwtBearerEvents
                     {
@@ -61,12 +70,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     };
                 });
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? ["https://localhost:7107"];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWepApp",
         policy =>
         {
-            policy.WithOrigins("https://localhost:7107")
+            policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
@@ -75,7 +87,6 @@ builder.Services.AddCors(options =>
 });
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -87,6 +98,8 @@ app.UseMiddleware<ErrorHandler>();
 app.UseHttpsRedirection();
 
 app.UseCors("AllowWepApp");
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

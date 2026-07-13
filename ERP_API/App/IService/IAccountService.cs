@@ -11,5 +11,6 @@ namespace ERP_API.App.IService
         public Task<UserTokenDto> Login(LoginModel Model);
         public Task Register(RegisterModel Model, int userId);
         public Task<UserTokenDto> RefreshToken(string refreshToken);
+        public Task Logout(int userId);
     }
 }

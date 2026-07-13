@@ -3,6 +3,7 @@ using ERP_API.App.IService;
 using ERP_API.Domin.RoleEntity;
 using ERPDto.RolesDto;
 using Infrastructure.Cache;
+using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -16,7 +17,7 @@ namespace ERP_API.Controllers
     public class RoleController : MasterController
     {
         private readonly IRoleService _roleService;
-        public RoleController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper,IRoleService roleService) : base(userService, cache, context, mapper)
+        public RoleController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper,IRoleService roleService, Jwt jwtService) : base(userService, cache, context, mapper, jwtService)
         {
             _roleService = roleService;
         }

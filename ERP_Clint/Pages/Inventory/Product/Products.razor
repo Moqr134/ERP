@@ -34,7 +34,7 @@
     <div class="table-panel__header">
         <h3>قائمة المنتجات</h3>
         <div class="header-actions">
-            @* <select class="filter-select" @onchange="OnCategoryFilterChanged">
+            <select class="filter-select" @bind="categoryFilter">
                 <option value="0">كل الأقسام</option>
                 @foreach (var category in categories)
                 {
@@ -43,8 +43,8 @@
             </select>
             <div class="search-box">
                 <span>🔍</span>
-                <input type="text" value="@searchTerm" @oninput="OnSearchChanged" placeholder="ابحث بالاسم أو الكود..." />
-            </div> *@
+                <input type="text" @bind="searchTerm" @bind:event="oninput" placeholder="ابحث بالاسم أو الكود..." />
+            </div>
             <button class="btn-primary" @onclick="OpenAddModal">+ إضافة منتج</button>
         </div>
     </div>
@@ -117,7 +117,7 @@
         </table>
         <div class="pager">
             <span class="pager__info">
-                عرض @(((page.PageIndex - 1) *page.PageSize) + 1)–@(Math.Min(page.PageIndex * page.PageSize, products[0].totalPages)) من أصل @products[0].totalCount منتج
+                عرض @(((page.PageIndex - 1) *page.PageSize) + 1)–@(Math.Min(page.PageIndex * page.PageSize, productsInfo.TotalProducts)) من أصل @productsInfo.TotalProducts منتج
             </span>
 
             <div class="pager__controls">
@@ -131,7 +131,7 @@
                     </button>
                 }
 
-                <button class="pager__btn" disabled="@(page.PageIndex == products[0].totalPages || products[0].totalPages == 0)" @onclick="() => GoToPage(page.PageIndex + 1)">التالي ›</button>
+                <button class="pager__btn" disabled="@(page.PageIndex == productsInfo.TotalProducts || productsInfo.TotalProducts == 0)" @onclick="() => GoToPage(page.PageIndex + 1)">التالي ›</button>
             </div>
         </div>
     }

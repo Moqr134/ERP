@@ -11,10 +11,13 @@ public class ErrorHandler
 {
     private readonly RequestDelegate _next;
     private readonly IAppLogger _logger;
+    private readonly IHostEnvironment _environment;
 
-    public ErrorHandler(RequestDelegate next, IAppLogger logger)
+    public ErrorHandler(RequestDelegate next, IAppLogger logger, IHostEnvironment environment)
     {
-        _next = next; _logger = logger;
+        _next = next;
+        _logger = logger;
+        _environment = environment;
     }
 
     public async Task Invoke(HttpContext context)
@@ -49,27 +52,27 @@ public class ErrorHandler
 
                 case DuplicateException:
                     response.StatusCode = (int)HttpStatusCode.Conflict;
-                    objectResult = new
-                    {
-                        //Errors = new List<Error>
-                        //{
-                        //    new Error(string.Concat(exception.Message[0].ToString().ToLower(),
-                        //        exception.Message.AsSpan(1)), new() { ErrorCode.Duplicate })
-                        //}
-                    };
+                    objectResult = new { exception.Message };
+                    break;
+
+                case InvalidOperationException:
+                    response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    objectResult = new { exception.Message };
                     break;
 
                 default:
                     response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                    objectResult = new
-                    {
-                        exception.Message,
-                        InnerMessage = exception.InnerException?.Message,
-                        exception.Data,
-                        exception.Source,
-                        exception.HelpLink,
-                        exception.HResult
-                    };
+                    objectResult = _environment.IsDevelopment()
+                        ? new
+                        {
+                            exception.Message,
+                            InnerMessage = exception.InnerException?.Message,
+                            exception.Data,
+                            exception.Source,
+                            exception.HelpLink,
+                            exception.HResult
+                        }
+                        : new { Message = "حدث خطأ داخلي في الخادم" };
                     break;
             }
 

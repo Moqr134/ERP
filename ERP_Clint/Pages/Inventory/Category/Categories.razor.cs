@@ -79,7 +79,7 @@ namespace ERP_Clint.Pages.Inventory.Category
             {
                 categories.Insert(0, saved); 
             }
-
+            await LoadCategories();
             isModalOpen = false;
             categoryBeingEdited = null;
             StateHasChanged();

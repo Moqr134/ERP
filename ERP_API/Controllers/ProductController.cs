@@ -4,6 +4,7 @@ using ERP_API.Domin.ProductEntity;
 using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
 using Infrastructure.Cache;
+using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -17,7 +18,7 @@ namespace ERP_API.Controllers
     public class ProductController : MasterController
     {
         private readonly IProductService _productService;
-        public ProductController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, IProductService productService) : base(userService, cache, context, mapper)
+        public ProductController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, IProductService productService, Jwt jwtService) : base(userService, cache, context, mapper, jwtService)
         {
             _productService = productService;
         }

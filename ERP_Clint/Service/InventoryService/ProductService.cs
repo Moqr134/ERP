@@ -3,7 +3,6 @@ using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using System.Net.Http.Json;
-using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
 
@@ -63,8 +62,7 @@ namespace ERP_Clint.Service.InventoryService
             var response = await _httpClient.SendAsync(request);
             if(response.IsSuccessStatusCode)
             {
-                List<ProductDto>? Products = response.Content.ReadFromJsonAsync<List<ProductDto>>().Result;
-                return Products;
+                return await response.Content.ReadFromJsonAsync<List<ProductDto>>();
             }
             return new List<ProductDto>();
         }
@@ -77,10 +75,9 @@ namespace ERP_Clint.Service.InventoryService
             var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
-                ProductDto? Product = response.Content.ReadFromJsonAsync<ProductDto>().Result;
-                return Product;
+                return await response.Content.ReadFromJsonAsync<ProductDto>();
             }
-            return new ProductDto();
+            return null;
         }
 
         public async Task<ProductsInfo?> GetProductsInfo()
@@ -91,10 +88,9 @@ namespace ERP_Clint.Service.InventoryService
             var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
-                ProductsInfo? ProductsInfo = response.Content.ReadFromJsonAsync<ProductsInfo>().Result;
-                return ProductsInfo;
+                return await response.Content.ReadFromJsonAsync<ProductsInfo>();
             }
-            return await Task.FromResult(new ProductsInfo());
+            return new ProductsInfo();
         }
 
         public async Task<HttpResponseMessage> UpdateProduct(UpdateProductModel model)

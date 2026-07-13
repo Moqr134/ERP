@@ -1,10 +1,8 @@
 ﻿using AutoMapper;
 using ERP_API.App.IService;
-using ERP_API.Domin.UsersEntity;
 using ERPDto.UserDto;
 using Infrastructure.Cache;
 using Infrastructure.JWT;
-using Infrastructure.Logger;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +14,16 @@ namespace SecondApi.Controllers
     {
 
         public DBContext _context;
-        private IAppMemoryCache _cache;
+        protected IAppMemoryCache _cache;
         public int _UserId = 0;
         public readonly IUserService _usersService;
         public readonly Jwt jwt;
         public IMapper _mapper;
-        public MasterController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper)
+        public MasterController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, Jwt jwtService)
         {
             _context = context;
             _cache = cache;
-            jwt = new Jwt(_context);
+            jwt = jwtService;
             _usersService = userService;
             _mapper = mapper;
         }
@@ -60,8 +58,11 @@ namespace SecondApi.Controllers
         }
         protected void GetUserId()
         {
-            //_UserId = jwt.ValidateToken(HttpContext.Request.Headers["Authorization"].ToString());
-            _UserId = jwt.ValidateToken(HttpContext.Request.Cookies["AuthToken"].ToString());
+            var token = HttpContext.Request.Cookies["AuthToken"];
+            if (string.IsNullOrEmpty(token))
+                throw new UnauthorizedAccessException("يجب تسجيل الدخول أولاً");
+
+            _UserId = jwt.ValidateToken(token);
         }
     }
 }

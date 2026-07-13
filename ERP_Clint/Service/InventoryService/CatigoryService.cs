@@ -8,7 +8,7 @@ namespace ERP_Clint.Service.InventoryService
 {
     public interface ICatigoryService
     {
-        public Task<List<CategoryDto?>> GetAllCategoriesAsync();
+        public Task<List<CategoryDto>> GetAllCategoriesAsync();
         public Task<CategoryDto?> GetCategoryByIdAsync(int id);
         public Task<HttpResponseMessage> CreateCategoryAsync(CategoryDto category);
         public Task<HttpResponseMessage> UpdateCategoryAsync(CategoryDto category);
@@ -44,17 +44,16 @@ namespace ERP_Clint.Service.InventoryService
             return response;
         }
 
-        public async Task<List<CategoryDto?>> GetAllCategoriesAsync()
+        public async Task<List<CategoryDto>> GetAllCategoriesAsync()
         {
             var request = new HttpRequestMessage(HttpMethod.Get, "api/categories/GetAllCategories");
             request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
             var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
-                List<CategoryDto>? content = response.Content.ReadFromJsonAsync<List<CategoryDto>>().Result;
-                return content;
+                return await response.Content.ReadFromJsonAsync<List<CategoryDto>>() ?? new List<CategoryDto>();
             }
-            return new List<CategoryDto?>();
+            return new List<CategoryDto>();
         }
 
         public async Task<CategoryDto?> GetCategoryByIdAsync(int id)
@@ -64,10 +63,9 @@ namespace ERP_Clint.Service.InventoryService
             var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
-                CategoryDto? content = response.Content.ReadFromJsonAsync<CategoryDto?>().Result;
-                return content;
+                return await response.Content.ReadFromJsonAsync<CategoryDto>();
             }
-            return new CategoryDto();
+            return null;
         }
 
         public async Task<HttpResponseMessage> UpdateCategoryAsync(CategoryDto category)

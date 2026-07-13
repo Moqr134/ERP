@@ -2,6 +2,7 @@
 using ERP_API.App.IService;
 using ERPDto.Suppliers;
 using Infrastructure.Cache;
+using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +16,7 @@ namespace ERP_API.Controllers
     public class SuppliersController : MasterController
     {
         private readonly ISuppliersService _suppliersService;
-        public SuppliersController(IUserService userService,ISuppliersService suppliersServise, IAppMemoryCache cache, DBContext context, IMapper mapper) : base(userService, cache, context, mapper)
+        public SuppliersController(IUserService userService,ISuppliersService suppliersServise, IAppMemoryCache cache, DBContext context, IMapper mapper, Jwt jwtService) : base(userService, cache, context, mapper, jwtService)
         {
             _suppliersService = suppliersServise;
         }

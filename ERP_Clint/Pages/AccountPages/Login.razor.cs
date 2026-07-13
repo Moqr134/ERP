@@ -30,7 +30,7 @@ namespace ERP_Clint.Pages.AccountPages
                 var result = await AccountService.Login(model);
                 if (!result.IsSuccessStatusCode)
                 {
-                    errorMessage = result.Content.ReadAsStringAsync().Result;
+                    errorMessage = await result.Content.ReadAsStringAsync();
                 }
                 else
                 {

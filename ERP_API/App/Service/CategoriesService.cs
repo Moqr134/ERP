@@ -17,7 +17,9 @@ namespace ERP_API.App.Service
         }
         public async Task<Categories?> GetFullCategoryById(int id)
         {
-            Categories? categories = await _context.Categories.Include(x=>x.Products).FirstOrDefaultAsync(c => c.Id == id);
+            Categories? categories = await _context.Categories
+                .Include(x => x.Products.Where(p => !p.IsRemoved))
+                .FirstOrDefaultAsync(c => c.Id == id && !c.IsRemoved);
             return categories;
         }
         public async Task CreateCategory(CategoryDto categories, int userId)
@@ -59,7 +61,8 @@ namespace ERP_API.App.Service
         public async Task<List<CategoryDto>> GetAllCategories()
         {
             List<CategoryDto> categoryDtos = await _context.Categories
-                .Include(p => p.Products)
+                .Where(c => !c.IsRemoved)
+                .Include(p => p.Products.Where(x => !x.IsRemoved))
                 .Select(c => new CategoryDto
                 {
                     Id = c.Id,
@@ -67,10 +70,6 @@ namespace ERP_API.App.Service
                     Description = c.Description,
                     ProductCount = c.Products.Count
                 }).ToListAsync();
-            if (categoryDtos.Count == 0|| categoryDtos == null)
-            {
-                throw new KeyNotFoundException("لم يتم العثور على فئات");
-            }
             return categoryDtos;
         }
 

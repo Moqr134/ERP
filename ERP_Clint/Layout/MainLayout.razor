@@ -1,4 +1,9 @@
 ﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject PRMS_Clint.Services.IAccountService AccountService
+@inject NavigationManager Navigation
+@inject ERP_Clint.Service.CostumAuth CostumAuth
 
 <div class="app-shell" dir="rtl">
 
@@ -25,10 +30,17 @@
 
             <div class="app-topbar__actions">
                 <button class="icon-btn" title="الإشعارات">🔔</button>
-                <div class="user-chip">
-                    <div class="user-avatar">A</div>
-                    <span>محمد</span>
-                </div>
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="user-menu">
+                            <div class="user-chip">
+                                <div class="user-avatar">@GetInitial(context.User.Identity?.Name)</div>
+                                <span>@context.User.Identity?.Name</span>
+                            </div>
+                            <button class="logout-btn" @onclick="HandleLogout" title="تسجيل الخروج">⏻</button>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
             </div>
         </header>
 
@@ -37,6 +49,21 @@
         </main>
     </div>
 </div>
+
+@code {
+    private static string GetInitial(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        return name.Trim()[0].ToString().ToUpper();
+    }
+
+    private async Task HandleLogout()
+    {
+        await AccountService.Logout();
+        CostumAuth.NotifyUserAuthenticationChanged();
+        Navigation.NavigateTo("/login");
+    }
+}
 
 <style>
     .app-shell {
@@ -47,7 +74,6 @@
         font-family: 'Cairo', sans-serif;
     }
 
-    /* ===== Sidebar ===== */
     .app-sidebar {
         width: 260px;
         flex-shrink: 0;
@@ -100,7 +126,6 @@
         text-align: center;
     }
 
-    /* ===== Main area ===== */
     .app-main {
         flex: 1;
         display: flex;
@@ -150,6 +175,12 @@
         border-color: rgba(249, 115, 22, 0.4);
     }
 
+    .user-menu {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
     .user-chip {
         display: flex;
         align-items: center;
@@ -158,7 +189,6 @@
         background: rgba(255,255,255,0.05);
         border: 1px solid rgba(255,255,255,0.08);
         border-radius: 30px;
-        cursor: pointer;
     }
 
     .user-avatar {
@@ -180,13 +210,29 @@
         color: #fff;
     }
 
+    .logout-btn {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 16px;
+        color: #fca5a5;
+        transition: background .2s, border-color .2s;
+    }
+
+    .logout-btn:hover {
+        background: rgba(239, 68, 68, 0.25);
+        border-color: rgba(239, 68, 68, 0.6);
+    }
+
     .app-content {
         flex: 1;
         padding: 28px;
         overflow-y: auto;
     }
 
-    /* Scrollbar عام يتماشى مع الثيم */
     ::-webkit-scrollbar {
         width: 8px;
         height: 8px;

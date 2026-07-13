@@ -2,6 +2,7 @@
 using ERP_API.App.IService;
 using ERPDto.StockTransactionDto;
 using Infrastructure.Cache;
+using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +16,7 @@ namespace ERP_API.Controllers
     public class StockTransactionsController : MasterController
     {
         private readonly IStockTransactionsService _stockTransactionsService;
-        public StockTransactionsController(IStockTransactionsService stockTransactionsService,IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper) : base(userService, cache, context, mapper)
+        public StockTransactionsController(IStockTransactionsService stockTransactionsService,IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, Jwt jwtService) : base(userService, cache, context, mapper, jwtService)
         {
             _stockTransactionsService = stockTransactionsService;
         }

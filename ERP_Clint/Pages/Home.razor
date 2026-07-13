@@ -1,9 +1,172 @@
 ﻿@using Microsoft.AspNetCore.Authorization
+@using ERP_Clint.Service.InventoryService
+@using ERPDto.ProductsDto
 @page "/"
 @layout MainLayout
 @attribute [Authorize]
-<PageTitle>Home</PageTitle>
+@inject IProductService ProductService
+@inject ICatigoryService CategoryService
 
-<h1>Hello, world!</h1>
+<PageTitle>الرئيسية</PageTitle>
 
-Welcome to your new app.
+<div class="home-page">
+    <div class="home-header">
+        <h1>مرحباً بك 👋</h1>
+        <p>نظرة سريعة على حالة المخزون والعمليات</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="state-box">جاري تحميل البيانات...</div>
+    }
+    else
+    {
+        <div class="kpi-grid">
+            <div class="kpi-card kpi-card--total">
+                <div class="kpi-card__icon">🏷️</div>
+                <div class="kpi-card__value">@(productsInfo?.TotalProducts ?? 0)</div>
+                <div class="kpi-card__label">إجمالي المنتجات</div>
+            </div>
+            <div class="kpi-card kpi-card--low">
+                <div class="kpi-card__icon">⚠️</div>
+                <div class="kpi-card__value">@(productsInfo?.ProductsCountLissMinStock ?? 0)</div>
+                <div class="kpi-card__label">وصلت للحد الأدنى</div>
+            </div>
+            <div class="kpi-card kpi-card--out">
+                <div class="kpi-card__icon">⛔</div>
+                <div class="kpi-card__value">@(productsInfo?.ProductsStockOut ?? 0)</div>
+                <div class="kpi-card__label">نافذة من المخزون</div>
+            </div>
+            <div class="kpi-card kpi-card--value">
+                <div class="kpi-card__icon">📦</div>
+                <div class="kpi-card__value">@categoriesCount</div>
+                <div class="kpi-card__label">عدد الأصناف</div>
+            </div>
+        </div>
+
+        <div class="quick-links">
+            <h3>اختصارات سريعة</h3>
+            <div class="quick-links__grid">
+                <a class="quick-link" href="inventory/products">
+                    <span>🏷️</span>
+                    <span>إدارة المنتجات</span>
+                </a>
+                <a class="quick-link" href="inventory/categories">
+                    <span>🗂️</span>
+                    <span>إدارة الأصناف</span>
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private ProductsInfo? productsInfo;
+    private int categoriesCount;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var infoTask = ProductService.GetProductsInfo();
+            var categoriesTask = CategoryService.GetAllCategoriesAsync();
+            await Task.WhenAll(infoTask, categoriesTask);
+            productsInfo = await infoTask;
+            categoriesCount = (await categoriesTask).Count;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
+
+<style>
+    .home-page {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+    }
+
+    .home-header h1 {
+        margin: 0 0 8px;
+        font-size: 26px;
+        font-weight: 800;
+        color: #fff;
+    }
+
+    .home-header p {
+        margin: 0;
+        color: rgba(255,255,255,0.55);
+        font-size: 14px;
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .kpi-card {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .kpi-card__icon { font-size: 22px; }
+    .kpi-card__value { font-size: 28px; font-weight: 800; color: #fff; }
+    .kpi-card__label { font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 600; }
+
+    .kpi-card--total { border-color: rgba(59,130,246,0.25); }
+    .kpi-card--low   { border-color: rgba(234,179,8,0.25); }
+    .kpi-card--out   { border-color: rgba(239,68,68,0.25); }
+    .kpi-card--value { border-color: rgba(249,115,22,0.25); }
+
+    .quick-links h3 {
+        margin: 0 0 14px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    .quick-links__grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 18px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: background .15s, border-color .15s, color .15s;
+    }
+
+    .quick-link:hover {
+        background: rgba(249,115,22,0.1);
+        border-color: rgba(249,115,22,0.35);
+        color: #fff;
+    }
+
+    .state-box {
+        padding: 24px;
+        text-align: center;
+        color: rgba(255,255,255,0.5);
+        background: rgba(255,255,255,0.03);
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.07);
+    }
+</style>

@@ -2,6 +2,7 @@
 using ERP_API.App.IService;
 using ERPDto.CategoriesDto;
 using Infrastructure.Cache;
+using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +16,7 @@ namespace ERP_API.Controllers
     public class CategoriesController : MasterController
     {
         private ICategoriesService _categoriesService;
-        public CategoriesController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, ICategoriesService categoriesService) : base(userService, cache, context, mapper)
+        public CategoriesController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, ICategoriesService categoriesService, Jwt jwtService) : base(userService, cache, context, mapper, jwtService)
         {
             _categoriesService = categoriesService;
         }
@@ -34,6 +35,7 @@ namespace ERP_API.Controllers
             return Ok(category);
         }
         [HttpPost("CreateCategory")]
+        [Authorize]
         public async Task<IActionResult> CreateCategory([FromBody] CategoryDto category)
         {
             if (_UserId == 0) GetUserId();
@@ -41,6 +43,7 @@ namespace ERP_API.Controllers
             return Ok();
         }
         [HttpPut("UpdateCategory")]
+        [Authorize]
         public async Task<IActionResult> UpdateCategory([FromBody] CategoryDto category)
         {
             if (_UserId == 0) GetUserId();
@@ -48,6 +51,7 @@ namespace ERP_API.Controllers
             return Ok();
         }
         [HttpDelete("DeleteCategory/{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteCategoryById(int id)
         {
             if (_UserId == 0) GetUserId();

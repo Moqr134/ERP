@@ -32,11 +32,14 @@ namespace ERP_Clint.Pages.Inventory.Product
                    Barcode = EditingProduct.Barcode,
                    Name = EditingProduct.Name,
                    SKU = EditingProduct.SKU,
+                   Price = EditingProduct.SellingPrice,
+                   CategoryId = EditingProduct.CategoriesId,
                 };
             }
             else
             {
                 formModel = new UpdateProductModel();
+                Model = new CreateProductModel();
             }
 
             errorMessage = null;
@@ -44,7 +47,8 @@ namespace ERP_Clint.Pages.Inventory.Product
 
         private async Task HandleSave()
         {
-            if (IsEditMode&&formModel.CategoryId == 0)
+            var selectedCategoryId = IsEditMode ? formModel.CategoryId : Model.CategoriesId;
+            if (selectedCategoryId == 0)
             {
                 errorMessage = "يرجى اختيار القسم";
                 return;
@@ -64,7 +68,8 @@ namespace ERP_Clint.Pages.Inventory.Product
                         Barcode = formModel.Barcode,
                         Name = formModel.Name,
                         SKU = formModel.SKU,
-                        SellingPrice = formModel.Price
+                        SellingPrice = formModel.Price,
+                        CategoriesId = formModel.CategoryId
                     };
                     if (response.IsSuccessStatusCode)
                     {
@@ -91,6 +96,7 @@ namespace ERP_Clint.Pages.Inventory.Product
                         SellingPrice = Model.SellingPrice,
                         CurrentStock = Model.CurrentStock,
                         MinStockLevel = Model.MinStockLevel,
+                        CategoriesId = Model.CategoriesId,
                     };
                     if (response.IsSuccessStatusCode)
                     {

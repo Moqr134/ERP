@@ -3,6 +3,7 @@ using ERP_API.App.IService;
 using ERPDto.PaigingDto;
 using ERPDto.UserDto;
 using Infrastructure.Cache;
+using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -16,7 +17,7 @@ namespace ERP_API.Controllers
     [Authorize(Roles = "FullAccess")]
     public class UserController : MasterController
     {
-        public UserController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper) : base(userService, cache, context, mapper)
+        public UserController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, Jwt jwtService) : base(userService, cache, context, mapper, jwtService)
         {
         }
         [HttpGet("GetUsers")]

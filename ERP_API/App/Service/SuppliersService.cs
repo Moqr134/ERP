@@ -3,6 +3,7 @@ using ERP_API.App.IService;
 using ERP_API.Domin.SuppliersEntity;
 using ERP_API.Infrastructure.Services;
 using ERPDto.Suppliers;
+using Infrastructure.AppException;
 using Infrastructure.ORM;
 using Infrastructure.Service;
 using Microsoft.EntityFrameworkCore;
@@ -16,12 +17,12 @@ namespace ERP_API.App.Service
         }
         private async Task<Suppliers?> GetSuppliersAsync(string Name)
         {
-            Suppliers? suppliers = await _context.Suppliers.FirstOrDefaultAsync(s => s.CompanyName == Name);
+            Suppliers? suppliers = await _context.Suppliers.FirstOrDefaultAsync(s => s.CompanyName == Name && !s.IsRemoved);
             return suppliers;
         }
         private async Task<Suppliers?> GetSuppliersAsync(int supplierId)
         {
-            Suppliers? suppliers = await _context.Suppliers.FindAsync(supplierId);
+            Suppliers? suppliers = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id == supplierId && !s.IsRemoved);
             return suppliers;
         }
         public async Task AddSupplires(SuppliersModel supplier, int createId)
@@ -29,7 +30,7 @@ namespace ERP_API.App.Service
             Suppliers? suppliers = await GetSuppliersAsync(supplier.CompanyName);
             if(suppliers != null)
             {
-                throw new Exception("المورد موجود بالفعل");
+                throw new DuplicateException("المورد موجود بالفعل");
             }
             suppliers = _mapper.Map<Suppliers>(supplier);
             suppliers.CreateUserId = createId;
@@ -53,7 +54,7 @@ namespace ERP_API.App.Service
             Suppliers? existingSupplier = await GetSuppliersAsync(supplier.Id);
             if (existingSupplier == null)
             {
-                throw new Exception("المورد غير موجود");
+                throw new KeyNotFoundException("المورد غير موجود");
             }
 
             _mapper.Map(supplier, existingSupplier);
@@ -64,7 +65,7 @@ namespace ERP_API.App.Service
         }
         public async Task<List<SuppliersDto>> GetAllSupplires()
         {
-            List<Suppliers> suppliersList = await _context.Suppliers.ToListAsync();
+            List<Suppliers> suppliersList = await _context.Suppliers.Where(s => !s.IsRemoved).ToListAsync();
             return suppliersList.Select(s => _mapper.Map<SuppliersDto>(s)).ToList();
         }
         public async Task<SuppliersDto> GetSuppliresById(int supplierId)
@@ -72,7 +73,7 @@ namespace ERP_API.App.Service
             Suppliers? suppliers = await GetSuppliersAsync(supplierId);
             if (suppliers == null)
             {
-                throw new Exception("المورد غير موجود");
+                throw new KeyNotFoundException("المورد غير موجود");
             }
             return _mapper.Map<SuppliersDto>(suppliers);
         }

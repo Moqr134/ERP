@@ -10,8 +10,8 @@ namespace ERP_Clint.Pages.Inventory.Product
     public partial class Products
     {
 
-        private List<ProductDto>? products = new();
-        private List<CategoryDto>? categories = new();
+        private List<ProductDto> products = new();
+        private List<CategoryDto> categories = new();
         [Inject]
         private IProductService _productService {  get; set; } = default!;
         [Inject] private ICatigoryService _catigoryService { get; set; } = default!;
@@ -31,9 +31,10 @@ namespace ERP_Clint.Pages.Inventory.Product
 
         private List<ProductDto> FilteredProducts =>
             products
-                .Where(p => string.IsNullOrWhiteSpace(searchTerm)
-                    || p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
-                    || p.Barcode.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .Where(p => (categoryFilter == 0 || p.CategoriesId == categoryFilter)
+                    && (string.IsNullOrWhiteSpace(searchTerm)
+                        || p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                        || p.Barcode.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
 
         protected override async Task OnInitializedAsync()
@@ -52,16 +53,12 @@ namespace ERP_Clint.Pages.Inventory.Product
                 var productsRequest = _productService.GetAllProductsAsync(page);
                 var productsInfoRequest = _productService.GetProductsInfo();
                 await Task.WhenAll(requst, productsRequest, productsInfoRequest);
-                categories = await requst;
+                categories = await requst ?? new List<CategoryDto>();
                 
-                if(categories == null) {
-                    loadError = "تعذر تحميل بيانات الفئات، تأكد من اتصالك وحاول مرة أخرى";
+                if(categories.Count == 0 && loadError is null) {
+                    // قائمة فارغة مقبولة
                 }
-                products = await productsRequest;
-                if (products is null)
-                {
-                    loadError = "تعذر تحميل بيانات المنتجات، تأكد من اتصالك وحاول مرة أخرى";
-                }
+                products = await productsRequest ?? new List<ProductDto>();
                 productsInfo = await productsInfoRequest;
                 if(productsInfo is null)
                 {
@@ -73,17 +70,21 @@ namespace ERP_Clint.Pages.Inventory.Product
                 isLoading = false;
             }
         }
+        private int CurrentTotalPages => productsInfo?.PageCount ?? 0;
         private async Task GoToPage(int pageNumper)
         {
-            if (pageNumper < 1 || pageNumper > products[0].totalPages || pageNumper == page.PageIndex) return;
+            if (pageNumper < 1 || pageNumper > CurrentTotalPages || pageNumper == page.PageIndex) return;
             page.PageIndex = pageNumper;
             await LoadAll();
         }
         private List<int> GetVisiblePageNumbers()
         {
+            var totalPages = CurrentTotalPages;
+            if (totalPages == 0) return new List<int>();
+
             const int windowSize = 5;
             var start = Math.Max(1, page.PageIndex - windowSize / 2);
-            var end = Math.Min(products[0].totalPages, start + windowSize - 1);
+            var end = Math.Min(totalPages, start + windowSize - 1);
             start = Math.Max(1, end - windowSize + 1);
 
             return Enumerable.Range(start, Math.Max(0, end - start + 1)).ToList();
@@ -110,18 +111,18 @@ namespace ERP_Clint.Pages.Inventory.Product
 
         private async Task HandleSaved(ProductDto saved)
         {
-            var index = products.FindIndex(p => p.Id == saved.Id);
-            if (index >= 0)
+            if (productsInfo is null) return;
+            productsInfo.TotalProducts++;
+            if(productsInfo.TotalProducts % page.PageSize == 1 && products.Count == page.PageSize)
             {
-                products[index] = saved;
+                products.RemoveAt(products.Count - 1);
             }
-            else
-            {
-                var count = products[0].totalCount++;
-                products.Insert(0, saved);
-                products[0].totalCount = count;
-                products[0].totalPages = (int)Math.Ceiling((double)products[0].totalCount / page.PageSize);
-            }
+            if(saved.CurrentStock < saved.MinStockLevel)
+                productsInfo.ProductsCountLissMinStock++;
+            if(saved.CurrentStock == 0)
+                productsInfo.ProductsStockOut++;
+            products.Insert(0, saved);
+            await LoadAll();
             isModalOpen = false;
             productBeingEdited = null;
             StateHasChanged();
@@ -142,19 +143,37 @@ namespace ERP_Clint.Pages.Inventory.Product
 
         private async Task HandleDeleteConfirmed()
         {
-            if (productBeingDeleted is null) return;
+            if (productBeingDeleted is null || productsInfo is null) return;
 
             try
             {
                 var response = await _productService.DeleteProduct(productBeingDeleted.Id);
                 if (response.IsSuccessStatusCode)
                 {
+                    var newTotalCount = Math.Max(0, productsInfo.TotalProducts - 1);
+                    var newTotalPages = (int)Math.Ceiling((double)newTotalCount / page.PageSize);
+
                     products.RemoveAll(p => p.Id == productBeingDeleted.Id);
-                    products[0] = new ProductDto
+
+                    if (products.Count == 0)
                     {
-                        totalCount = products[0].totalCount - 1,
-                        totalPages = (int)Math.Ceiling((double)(products[0].totalCount - 1) / page.PageSize)
-                    };
+                        // القائمة فضت بعد الحذف: لو كنا بصفحة غير الأولى نرجع صفحة للخلف ونعيد التحميل كامل
+                        if (page.PageIndex > 1)
+                        {
+                            page.PageIndex--;
+                            await LoadAll();
+                        }
+                        // إذا كنا أصلاً بالصفحة 1 وفضت، نتركها فاضية (تظهر رسالة "لا توجد منتجات")
+                    }
+                    else
+                    {
+                        // نحدث العداد الكلي على العناصر المتبقية بدون الحاجة لإعادة تحميل من الـ API
+                        foreach (var product in products)
+                        {
+                            productsInfo.TotalProducts = newTotalCount;
+                            productsInfo.PageCount = newTotalPages;
+                        }
+                    }
                 }
             }
             finally

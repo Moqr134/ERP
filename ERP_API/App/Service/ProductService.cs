@@ -49,6 +49,7 @@ namespace ERP_API.App.Service
             Newproduct = await GetProductByBarcode(product.Barcode);
             if (Newproduct != null) throw new DuplicateException("هذا باركود مستخدم بلفعل في منتج اخر");
             Newproduct = await GetProductByName(product.Name);
+            if (Newproduct != null) throw new DuplicateException("هذا الاسم مستخدم بالفعل في منتج آخر");
             if (product.CostPrice > product.SellingPrice) throw new LogicException("سعر  البيع لا يمكن ان يكون اقل من سعر الكلفة");
             if (product.MinStockLevel < 0) throw new LogicException("اقل قيمه مخزونه لا يمن ان تكون في السالب");
             Newproduct = new Product();
@@ -72,6 +73,7 @@ namespace ERP_API.App.Service
         public async Task<List<ProductDto>> GetAllProductsAsync(PageDto pageDto)
         {
             List<ProductDto> products = await _context.Products
+                .Where(x => !x.IsRemoved)
                 .Skip((pageDto.PageIndex - 1) * pageDto.PageSize)
                 .Take(pageDto.PageSize)
                 .Select(x => new ProductDto
@@ -87,13 +89,11 @@ namespace ERP_API.App.Service
                     CategoriesId = x.CategoriesId,
                 }).ToListAsync();
             if (products == null) throw new KeyNotFoundException("المنتج غير موجود");
-            products[0].totalCount = await _context.Products.CountAsync();
-            products[0].totalPages = (int)Math.Ceiling((double)products[0].totalCount / pageDto.PageSize);
             return products;
         }
         public async Task<ProductDto> GetProductByIdAsync(int id)
         {
-            ProductDto? product = await _context.Products.Where(p => p.Id == id)
+            ProductDto? product = await _context.Products.Where(p => p.Id == id && !p.IsRemoved)
                 .Select(x=> new ProductDto
                 {
                     Id = x.Id,
@@ -163,7 +163,7 @@ namespace ERP_API.App.Service
 
         public async Task<List<ProductDto>> GetLowStockProduct()
         {
-            List<ProductDto> products = await _context.Products.Where(x => x.CurrentStock <= x.MinStockLevel)
+            List<ProductDto> products = await _context.Products.Where(x => !x.IsRemoved && x.CurrentStock <= x.MinStockLevel)
                 .Select(x => new ProductDto
                 {
                     Name = x.Name,
@@ -181,10 +181,11 @@ namespace ERP_API.App.Service
         public async Task<ProductsInfo> GetProductsInfo()
         {
             ProductsInfo productsInfo = new ProductsInfo();
-            productsInfo.TotalProducts = await _context.Products.CountAsync();
-            productsInfo.ProductsStockOut = await _context.Products.CountAsync(p => p.CurrentStock == 0);
-            productsInfo.ProductsCountLissMinStock = await _context.Products.CountAsync(p => p.CurrentStock < p.MinStockLevel);
-            productsInfo.ProductsCostCount = await _context.Products.Where(p=>p.CurrentStock > 0).SumAsync(p => p.SellingPrice * p.CurrentStock);
+            productsInfo.TotalProducts = await _context.Products.CountAsync(p => !p.IsRemoved);
+            productsInfo.ProductsStockOut = await _context.Products.CountAsync(p => !p.IsRemoved && p.CurrentStock == 0);
+            productsInfo.ProductsCountLissMinStock = await _context.Products.CountAsync(p => !p.IsRemoved && p.CurrentStock < p.MinStockLevel);
+            productsInfo.ProductsCostCount = await _context.Products.Where(p => !p.IsRemoved && p.CurrentStock > 0).SumAsync(p => p.CostPrice * p.CurrentStock);
+            productsInfo.PageCount = (int)Math.Ceiling((double)productsInfo.TotalProducts / 10);
             return productsInfo;
         }
     }
