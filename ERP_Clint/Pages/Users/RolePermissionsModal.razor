@@ -1,0 +1,133 @@
+@using ERPDto.RolesDto
+@using ERPDto.UserDto
+
+<div class="modal-overlay @(IsOpen ? "open" : "")">
+    <div class="modal-box modal-box--wide">
+        <div class="modal-box__header">
+            <h3>صلاحيات الدور: @Role?.Name</h3>
+            <button class="modal-close" @onclick="Close">✕</button>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="state-box">جاري التحميل...</div>
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert-error">⚠ @errorMessage</div>
+        }
+        else
+        {
+            <div class="perm-actions">
+                <button class="btn-secondary" type="button" @onclick="SelectAll">تحديد الكل</button>
+                <button class="btn-secondary" type="button" @onclick="ClearAll">إلغاء الكل</button>
+            </div>
+            <div class="perm-list">
+                @foreach (var permission in allPermissions)
+                {
+                    <label class="perm-check">
+                        <input type="checkbox"
+                               checked="@selectedIds.Contains(permission.Id)"
+                               @onchange="e => Toggle(permission.Id, e)" />
+                        <span>@permission.Name</span>
+                    </label>
+                }
+            </div>
+            <div class="modal-box__footer">
+                <button class="btn-secondary" @onclick="Close" disabled="@isSaving">إلغاء</button>
+                <button class="btn-primary" @onclick="HandleSave" disabled="@isSaving">
+                    @(isSaving ? "جاري الحفظ..." : "حفظ")
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public RoleDto? Role { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Inject] private ERP_Clint.Service.UserAdmin.IRoleAdminService RoleService { get; set; } = default!;
+
+    private List<PermissionDto> allPermissions = new();
+    private HashSet<int> selectedIds = new();
+    private bool isLoading;
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!IsOpen || Role is null) return;
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            var allTask = RoleService.GetAllPermissionsAsync();
+            var roleTask = RoleService.GetRolePermissionsAsync(Role.Id);
+            await Task.WhenAll(allTask, roleTask);
+            allPermissions = await allTask;
+            var rolePerms = await roleTask;
+            selectedIds = rolePerms?.Permissions.Select(p => p.Id).ToHashSet() ?? new HashSet<int>();
+        }
+        catch
+        {
+            errorMessage = "تعذر تحميل صلاحيات الدور";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void Toggle(int id, ChangeEventArgs e)
+    {
+        var isChecked = e.Value is bool b && b || string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        if (isChecked) selectedIds.Add(id);
+        else selectedIds.Remove(id);
+    }
+
+    private void SelectAll() => selectedIds = allPermissions.Select(p => p.Id).ToHashSet();
+    private void ClearAll() => selectedIds = new HashSet<int>();
+
+    private async Task HandleSave()
+    {
+        if (Role is null) return;
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            var response = await RoleService.SetRolePermissionsAsync(new RolePermissionDto
+            {
+                RoleId = Role.Id,
+                PermissionIds = selectedIds.ToList()
+            });
+            if (response.IsSuccessStatusCode)
+                await OnSaved.InvokeAsync();
+            else
+                errorMessage = await ERP_Clint.Service.ApiErrorHelper.ReadMessageAsync(response, "فشل حفظ الصلاحيات");
+        }
+        catch
+        {
+            errorMessage = "تعذر الاتصال بالخادم";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        if (isSaving) return;
+        await OnClose.InvokeAsync();
+    }
+}
+
+<style>
+    .modal-box--wide { max-width:560px; max-height:85vh; overflow:auto; }
+    .perm-actions { display:flex; gap:8px; margin-bottom:12px; }
+    .perm-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+    .perm-check { display:flex; align-items:center; gap:8px; padding:8px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; font-size:13px; cursor:pointer; }
+    @@media (max-width:560px) { .perm-list { grid-template-columns:1fr; } }
+</style>

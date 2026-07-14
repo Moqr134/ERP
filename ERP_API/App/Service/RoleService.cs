@@ -5,6 +5,7 @@ using ERP_API.Domin.PermissionsEntity;
 using ERP_API.Domin.RoleEntity;
 using ERP_API.Infrastructure.Services;
 using ERPDto.RolesDto;
+using ERPDto.UserDto;
 using Infrastructure.AppException;
 using Infrastructure.ORM;
 using Infrastructure.Service;
@@ -17,26 +18,26 @@ namespace ERP_API.App.Service
         public RoleService(DBContext context, IMapper mapper) : base(context, mapper)
         {
         }
+
         public async Task CreateRole(RoleDto roleDto, int createUserId)
         {
             Role? role = await GetRoleByName(roleDto.Name);
-            if(role != null)
-            {
+            if (role != null)
                 throw new DuplicateException("الدور موجود بالفعل.");
-            }
+
             role = _mapper.Map<Role>(roleDto);
             role.CreateDate = DateTime.UtcNow.AddHours(3);
             role.CreateUserId = createUserId;
             _context.Roles.Add(role);
             await _context.SaveChangesAsync();
         }
+
         public async Task UpdateRole(int UpdateUserId, RoleDto roleDto)
         {
             Role? role = await GetRoleById(roleDto.Id);
             if (role == null)
-            {
                 throw new KeyNotFoundException("لم يتم العثور على الدور بالمعرف المحدد.");
-            }
+
             if (roleDto.Name != null)
                 role.Name = roleDto.Name;
             if (roleDto.Description != null)
@@ -46,77 +47,110 @@ namespace ERP_API.App.Service
             _context.Entry(role).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }
+
         public async Task DeleteRole(int id, int deleteUserId)
         {
             Role? role = await GetRoleById(id);
             if (role == null)
-            {
                 throw new KeyNotFoundException("لم يتم العثور على الدور بالمعرف المحدد.");
-            }
+
+            var assigned = await _context.UserRoles.AnyAsync(x => x.RoleId == id);
+            if (assigned)
+                throw new InvalidOperationException("لا يمكن حذف الدور لأنه مرتبط بمستخدمين");
+
             role.IsRemoved = true;
             role.UpdateDate = DateTime.UtcNow.AddHours(3);
             role.UpdateUserId = deleteUserId;
             _context.Entry(role).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }
+
         public async Task<List<RoleDto>> GetAllRoles()
         {
-            List<RoleDto> roles = _context.Roles.Where(r => !r.IsRemoved)
-            .Select(r => new RoleDto
+            return await _context.Roles.Where(r => !r.IsRemoved)
+                .Select(r => new RoleDto
+                {
+                    Id = r.Id,
+                    Name = r.Name,
+                    Description = r.Description
+                }).ToListAsync();
+        }
+
+        public async Task<List<PermissionDto>> GetAllPermissions()
+        {
+            return await _context.Permissions
+                .OrderBy(p => p.Name)
+                .Select(p => new PermissionDto
+                {
+                    Id = p.Id,
+                    Name = p.Name
+                })
+                .ToListAsync();
+        }
+
+        public async Task<RolePermissionViewDto> GetRolePermissions(int roleId)
+        {
+            Role? role = await GetRoleById(roleId);
+            if (role == null)
+                throw new KeyNotFoundException("لم يتم العثور على الدور بالمعرف المحدد.");
+
+            var permissions = await _context.RolePermissions
+                .Where(rp => rp.RoleId == roleId)
+                .Include(rp => rp.Permission)
+                .Select(rp => new PermissionDto
+                {
+                    Id = rp.Permission.Id,
+                    Name = rp.Permission.Name
+                })
+                .ToListAsync();
+
+            return new RolePermissionViewDto
             {
-                Id = r.Id,
-                Name = r.Name,
-                Description = r.Description
-            }).ToList();
-            return roles;
+                RoleId = role.Id,
+                RoleName = role.Name,
+                Permissions = permissions
+            };
         }
-        public async Task<List<Permission>> GetAllPermissions()
+
+        private async Task<Permission?> GetPermission(int id)
         {
-            List<Permission> permissions = await _context.Permissions.ToListAsync();
-            return permissions;
+            return await _context.Permissions.FindAsync(id);
         }
-        public async Task<Permission?> GetPermission(int id)
-        {
-            Permission? permission = await _context.Permissions.FindAsync(id);
-            return permission;
-        }
+
         public async Task<Role?> GetRoleById(int id)
         {
-            Role? role = _context.Roles.FirstOrDefault(r => r.Id == id && !r.IsRemoved);
-            return role;
+            return await _context.Roles.FirstOrDefaultAsync(r => r.Id == id && !r.IsRemoved);
         }
+
         private async Task<Role?> GetRoleByName(string roleName)
         {
-            Role? role = _context.Roles.FirstOrDefault(r => r.Name == roleName && !r.IsRemoved);
-            return role;
+            return await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleName && !r.IsRemoved);
         }
 
         public async Task CreateRolePermission(int roleId, List<int> permissionIds)
         {
-            List<RolePermissions> rolePermissions = await _context.RolePermissions.Where(rp => rp.RoleId == roleId).ToListAsync();
             Role? role = await GetRoleById(roleId);
-            if (role == null) {
+            if (role == null)
                 throw new KeyNotFoundException("لم يتم العثور على الدور بالمعرف المحدد.");
-            }
-            List<Permission> permissions = new List<Permission>();
-            foreach (var id in permissionIds)
+
+            permissionIds ??= new List<int>();
+            foreach (var id in permissionIds.Distinct())
             {
-                Permission? permission = await GetPermission(id);
+                var permission = await GetPermission(id);
                 if (permission == null)
-                {
                     throw new KeyNotFoundException($"لم يتم العثور على الصلاحية بالمعرف {id}.");
-                }
-                permissions.Add(permission);
             }
-            _context.RolePermissions.RemoveRange(rolePermissions);
-            List<RolePermissions> NewRolePermissions = new List<RolePermissions>();
-            foreach (var permission in permissionIds) {
-                NewRolePermissions.Add(new RolePermissions {
-                    RoleId = roleId,
-                    PermissionId = permission
-                });
-            }
-            await _context.RolePermissions.AddRangeAsync(NewRolePermissions);
+
+            var existing = await _context.RolePermissions.Where(rp => rp.RoleId == roleId).ToListAsync();
+            _context.RolePermissions.RemoveRange(existing);
+
+            var newItems = permissionIds.Distinct().Select(permissionId => new RolePermissions
+            {
+                RoleId = roleId,
+                PermissionId = permissionId
+            }).ToList();
+
+            await _context.RolePermissions.AddRangeAsync(newItems);
             await _context.SaveChangesAsync();
         }
     }

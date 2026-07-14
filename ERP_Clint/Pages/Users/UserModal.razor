@@ -1,0 +1,199 @@
+@using ERPDto.RolesDto
+@using ERPDto.UserDto
+@using System.ComponentModel.DataAnnotations
+
+<div class="modal-overlay @(IsOpen ? "open" : "")">
+    <div class="modal-box">
+        <div class="modal-box__header">
+            <h3>@(IsEditMode ? "تعديل مستخدم" : "إضافة مستخدم جديد")</h3>
+            <button class="modal-close" @onclick="Close">✕</button>
+        </div>
+
+        <EditForm Model="@formModel" OnValidSubmit="HandleSave">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert-error">⚠ @errorMessage</div>
+            }
+
+            <div class="form-group">
+                <label>اسم المستخدم</label>
+                <InputText @bind-Value="formModel.Username" class="form-input" maxlength="16" />
+                <ValidationMessage For="@(() => formModel.Username)" />
+            </div>
+
+            <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <InputText @bind-Value="formModel.Email" class="form-input" />
+                <ValidationMessage For="@(() => formModel.Email)" />
+            </div>
+
+            @if (!IsEditMode)
+            {
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <InputText @bind-Value="formModel.Password" type="password" class="form-input" />
+                    <ValidationMessage For="@(() => formModel.Password)" />
+                </div>
+            }
+
+            <div class="form-group">
+                <label>الدور</label>
+                <InputSelect @bind-Value="formModel.RoleId" class="form-input">
+                    <option value="0">اختر الدور</option>
+                    @foreach (var role in Roles)
+                    {
+                        <option value="@role.Id">@role.Name</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="form-group switch-row">
+                <label>الحساب نشط</label>
+                <input type="checkbox" @bind="formModel.IsActive" />
+            </div>
+
+            <div class="modal-box__footer">
+                <button type="button" class="btn-secondary" @onclick="Close" disabled="@isSaving">إلغاء</button>
+                <button type="submit" class="btn-primary" disabled="@isSaving">
+                    @(isSaving ? "جاري الحفظ..." : "حفظ")
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public UserDetailDto? EditingUser { get; set; }
+    [Parameter] public List<RoleDto> Roles { get; set; } = new();
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Inject] private ERP_Clint.Service.UserAdmin.IUserAdminService UserService { get; set; } = default!;
+
+    private FormModel formModel = new();
+    private bool isSaving;
+    private string? errorMessage;
+    private bool IsEditMode => EditingUser is not null;
+
+    protected override void OnParametersSet()
+    {
+        if (EditingUser is not null)
+        {
+            formModel = new FormModel
+            {
+                Username = EditingUser.Username,
+                Email = EditingUser.Email,
+                RoleId = EditingUser.RoleIds.FirstOrDefault(),
+                IsActive = EditingUser.IsActive,
+                Password = "******"
+            };
+        }
+        else
+        {
+            formModel = new FormModel { IsActive = true };
+        }
+        errorMessage = null;
+    }
+
+    private async Task HandleSave()
+    {
+        if (formModel.RoleId <= 0)
+        {
+            errorMessage = "يرجى اختيار دور";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            HttpResponseMessage response;
+            if (IsEditMode && EditingUser is not null)
+            {
+                response = await UserService.UpdateUserAsync(new UpdateUserModel
+                {
+                    Id = EditingUser.Id,
+                    Username = formModel.Username,
+                    Email = formModel.Email,
+                    IsActive = formModel.IsActive,
+                    RoleIds = new List<int> { formModel.RoleId }
+                });
+            }
+            else
+            {
+                response = await UserService.CreateUserAsync(new CreateUserModel
+                {
+                    Username = formModel.Username,
+                    Email = formModel.Email,
+                    Password = formModel.Password,
+                    RoleId = formModel.RoleId,
+                    IsActive = formModel.IsActive
+                });
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                await OnSaved.InvokeAsync();
+            }
+            else
+            {
+                errorMessage = await ERP_Clint.Service.ApiErrorHelper.ReadMessageAsync(response, "فشل حفظ المستخدم");
+            }
+        }
+        catch
+        {
+            errorMessage = "تعذر الاتصال بالخادم";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        if (isSaving) return;
+        await OnClose.InvokeAsync();
+    }
+
+    private class FormModel
+    {
+        [Required(ErrorMessage = "اسم المستخدم مطلوب")]
+        [StringLength(16, MinimumLength = 3, ErrorMessage = "اسم المستخدم بين 3 و 16 حرف")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "البريد مطلوب")]
+        [EmailAddress(ErrorMessage = "بريد غير صالح")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "كلمة المرور مطلوبة")]
+        [StringLength(100, MinimumLength = 5, ErrorMessage = "كلمة المرور 5 أحرف على الأقل")]
+        public string Password { get; set; } = string.Empty;
+
+        public int RoleId { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}
+
+<style>
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:110; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { width:100%; max-width:460px; background:#141a22; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px; color:#e8edf2; font-family:'Cairo',sans-serif; }
+    .modal-box__header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .modal-box__header h3 { margin:0; font-size:16px; color:#fff; }
+    .modal-close { background:none; border:none; color:rgba(255,255,255,0.5); font-size:18px; cursor:pointer; }
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; margin-bottom:6px; font-size:13px; color:rgba(255,255,255,0.75); font-weight:600; }
+    .form-input { width:100%; padding:11px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; font-family:'Cairo',sans-serif; box-sizing:border-box; }
+    .form-input:focus { outline:none; border-color:#f97316; }
+    select.form-input option { background:#141a22; }
+    .switch-row { display:flex; justify-content:space-between; align-items:center; }
+    .alert-error { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#f87171; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-size:13px; }
+    .modal-box__footer { display:flex; gap:10px; margin-top:8px; }
+    .modal-box__footer button { flex:1; }
+    .btn-secondary { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e8edf2; padding:10px; border-radius:10px; cursor:pointer; }
+    .btn-primary { background:linear-gradient(135deg,#f97316,#c2410c); border:none; color:#fff; padding:10px; border-radius:10px; font-weight:700; cursor:pointer; }
+    .validation-message { color:#f87171; font-size:12px; }
+</style>
