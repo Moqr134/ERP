@@ -6,10 +6,6 @@ namespace ERP_API.Infrastructure.Permissions;
 
 public static class PermissionSeeder
 {
-    /// <summary>
-    /// Ensures every permission defined in <see cref="SystemPermissions"/> exists in the database.
-    /// Missing permissions are inserted; existing ones are left unchanged.
-    /// </summary>
     public static async Task EnsurePermissionsAsync(IServiceProvider services, ILogger? logger = null)
     {
         using var scope = services.CreateScope();

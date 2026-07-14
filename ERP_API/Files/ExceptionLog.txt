@@ -1,2 +1,16 @@
 
 ^[14/07/2026 04:51:48 م]	[POST]	[localhost:7136]	[/api/Account/refresh-token]	[404]	[المستخدم غير موجود]	[]	[{"Message":"المستخدم غير موجود KeyNotFound"}]$
+^[14/07/2026 06:08:17 م]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/ببسي]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[14/07/2026 06:09:00 م]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[14/07/2026 06:14:36 م]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[14/07/2026 06:16:19 م]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 01:45:03 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 01:45:15 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/ببسي]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 01:47:16 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 01:47:35 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/ل]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 02:04:53 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 02:05:49 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 02:07:33 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/ببسي]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 02:07:50 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 02:08:41 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/دور]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
+^[15/07/2026 02:11:15 ص]	[GET]	[localhost:7136]	[/api/Sales/LookupProductByBarcode/جبس]	[404]	[لم يتم العثور على المادة]	[]	[{"Message":"لم يتم العثور على المادة KeyNotFound"}]$
