@@ -267,6 +267,18 @@
 
     .pos__add-btn { white-space: nowrap; }
 
+    /* موحّد لكل الأزرار المعطّلة داخل نقطة البيع */
+    .pos button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        box-shadow: none;
+        filter: grayscale(0.15);
+    }
+    .pos .btn-primary:disabled:hover {
+        background: linear-gradient(135deg, #f97316, #c2410c);
+        box-shadow: none;
+    }
+
     .pos__hint {
         margin-top: 10px;
         font-size: 13px;
@@ -301,6 +313,10 @@
     .pos__result:hover {
         background: rgba(249,115,22,0.1);
         border-color: rgba(249,115,22,0.35);
+    }
+    .pos__result:focus-visible {
+        outline: 2px solid rgba(249,115,22,0.6);
+        outline-offset: 1px;
     }
 
     .pos__result-main { display: flex; flex-direction: column; gap: 2px; }
@@ -369,7 +385,7 @@
         color: #fff; cursor: pointer; font-size: 16px;
         border-radius: 6px;
     }
-    .pos__qty button:hover { background: rgba(255,255,255,0.08); }
+    .pos__qty button:not(:disabled):hover { background: rgba(255,255,255,0.08); }
     .pos__qty input {
         width: 42px; text-align: center;
         background: transparent; border: none; color: #fff;
@@ -379,9 +395,9 @@
 
     .pos__remove {
         background: transparent; border: none; color: rgba(255,255,255,0.35);
-        cursor: pointer; font-size: 14px; padding: 6px;
+        cursor: pointer; font-size: 14px; padding: 6px; border-radius: 6px;
     }
-    .pos__remove:hover { color: #f87171; }
+    .pos__remove:not(:disabled):hover { color: #f87171; background: rgba(248,113,113,0.12); }
 
     .pos__checkout {
         display: flex;
@@ -428,7 +444,7 @@
         align-items: center;
     }
 
-    .pos__tender:hover {
+    .pos__tender:not(:disabled):hover {
         border-color: rgba(249,115,22,0.45);
         background: rgba(249,115,22,0.1);
         color: #fff;
@@ -490,6 +506,10 @@
         font-family: 'Cairo', sans-serif;
         font-weight: 700;
         cursor: pointer;
+    }
+    .pos__pay-btn:not(:disabled):not(.active):hover {
+        border-color: rgba(255,255,255,0.25);
+        color: #fff;
     }
     .pos__pay-btn.active {
         background: rgba(249,115,22,0.18);
