@@ -1,0 +1,73 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace ERPDto.SalesDto
+{
+    public class CompleteSaleLineDto
+    {
+        [Range(1, int.MaxValue)]
+        public int ProductId { get; set; }
+
+        [Range(1, int.MaxValue)]
+        public int Quantity { get; set; }
+
+        /// <summary>Optional override; server uses product SellingPrice if null/0.</summary>
+        [Range(0, double.MaxValue)]
+        public double? UnitPrice { get; set; }
+    }
+
+    public class CompleteSaleModel
+    {
+        [MinLength(1, ErrorMessage = "يجب إضافة منتج واحد على الأقل")]
+        public List<CompleteSaleLineDto> Lines { get; set; } = new();
+
+        [Range(0, double.MaxValue)]
+        public double Discount { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public double PaidAmount { get; set; }
+
+        [Required]
+        [StringLength(20)]
+        public string PaymentMethod { get; set; } = "Cash";
+
+        [StringLength(250)]
+        public string? Notes { get; set; }
+    }
+
+    public class SaleLineDto
+    {
+        public int Id { get; set; }
+        public int ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string? Barcode { get; set; }
+        public int Quantity { get; set; }
+        public double UnitPrice { get; set; }
+        public double LineTotal { get; set; }
+    }
+
+    public class SaleDto
+    {
+        public int Id { get; set; }
+        public string InvoiceNumber { get; set; } = string.Empty;
+        public string PaymentMethod { get; set; } = string.Empty;
+        public double SubTotal { get; set; }
+        public double Discount { get; set; }
+        public double Total { get; set; }
+        public double PaidAmount { get; set; }
+        public double ChangeAmount { get; set; }
+        public string? Notes { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime CreateDate { get; set; }
+        public int? CreateUserId { get; set; }
+        public List<SaleLineDto> Lines { get; set; } = new();
+    }
+
+    public class SalesListResponse
+    {
+        public List<SaleDto> Items { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int PageIndex { get; set; }
+        public int PageSize { get; set; }
+        public int PageCount { get; set; }
+    }
+}
