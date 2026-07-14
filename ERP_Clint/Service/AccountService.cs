@@ -25,51 +25,27 @@ namespace PRMS_Clint.Services
         {
             var json = JsonSerializer.Serialize(user);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/Account/Login")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PostAsync("api/Account/Login", content);
         }
 
         public async Task<HttpResponseMessage> RefreshToken()
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"api/Account/refresh-token");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            return await _httpClient.SendAsync(request);
+            return await _httpClient.PostAsync("api/Account/refresh-token", null);
         }
         public async Task<HttpResponseMessage> Logout()
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/Account/Logout");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PostAsync("api/Account/Logout", null);
         }
         public async Task<HttpResponseMessage> Regester(RegisterModel user)
         {
             var json = JsonSerializer.Serialize(user);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/Account/Register")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PostAsync("api/Account/Register", content);
         }
 
         public async Task<HttpResponseMessage> GetUserInfo()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"api/account/userinfo");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.GetAsync("api/account/userinfo");
         }
     }
 }

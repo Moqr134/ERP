@@ -6,6 +6,7 @@ using ERP_API.Domin.UsersEntity;
 using ERP_API.Infrastructure.Services;
 using ERPDto.PaigingDto;
 using ERPDto.UserDto;
+using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Infrastructure.Service;
 using Microsoft.EntityFrameworkCore;
@@ -85,7 +86,10 @@ namespace ERP_API.App.Service
                 RolePermissions.RemoveAll(x => x.Id == item.Id);
             }
             AllowedPermissions.AddRange(RolePermissions);
-            return AllowedPermissions;
+            return AllowedPermissions
+                .GroupBy(p => p.Id)
+                .Select(g => g.First())
+                .ToList();
         }
 
         public async Task<Role> GetRole(string RoleName)
@@ -139,7 +143,8 @@ namespace ERP_API.App.Service
 
         public async Task<Users?> GetUserByRefreshToken(string refreshToken)
         {
-            Users? users = await _context.Users.Where(x => x.RefreshToken == refreshToken && !x.IsRemoved)
+            var hashed = TokenHasher.Hash(refreshToken);
+            Users? users = await _context.Users.Where(x => x.RefreshToken == hashed && !x.IsRemoved)
                 .Include(x => x.UserRoles)
                 .FirstOrDefaultAsync();
             if (users is null)

@@ -5,7 +5,6 @@ using Infrastructure.Cache;
 using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SecondApi.Controllers;
 
@@ -21,21 +20,21 @@ namespace ERP_API.Controllers
             _categoriesService = categoriesService;
         }
         [HttpGet("GetAllCategories")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,GetAllCategories")]
         public async Task<IActionResult> GetAllCategories()
         {
             List<CategoryDto> categories = await _categoriesService.GetAllCategories();
             return Ok(categories);
         }
         [HttpGet("GetCategoryById/{id}")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,GetCategoryById")]
         public async Task<IActionResult> GetCategoryById(int id)
         {
             CategoryDto category = await _categoriesService.GetCategoryById(id);
             return Ok(category);
         }
         [HttpPost("CreateCategory")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,CreateCategory")]
         public async Task<IActionResult> CreateCategory([FromBody] CategoryDto category)
         {
             if (_UserId == 0) GetUserId();
@@ -43,7 +42,7 @@ namespace ERP_API.Controllers
             return Ok();
         }
         [HttpPut("UpdateCategory")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,UpdateCategory")]
         public async Task<IActionResult> UpdateCategory([FromBody] CategoryDto category)
         {
             if (_UserId == 0) GetUserId();
@@ -51,7 +50,7 @@ namespace ERP_API.Controllers
             return Ok();
         }
         [HttpDelete("DeleteCategory/{id}")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,DeleteCategory")]
         public async Task<IActionResult> DeleteCategoryById(int id)
         {
             if (_UserId == 0) GetUserId();

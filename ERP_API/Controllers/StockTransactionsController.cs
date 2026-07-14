@@ -5,7 +5,6 @@ using Infrastructure.Cache;
 using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SecondApi.Controllers;
 
@@ -21,7 +20,7 @@ namespace ERP_API.Controllers
             _stockTransactionsService = stockTransactionsService;
         }
         [HttpPost("AddStockTransaction")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,AddStockTransaction")]
         public async Task<IActionResult> AddStockTransaction([FromBody]CreateStockTransactionsModel model)
         {
             if(_UserId == 0) GetUserId();
@@ -30,7 +29,7 @@ namespace ERP_API.Controllers
         }
 
         [HttpGet("GetStockTransactions")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,GetStockTransactions")]
         public async Task<IActionResult> GetStockTransactions()
         {
             var list = await _stockTransactionsService.GetStockTransactionsAsync();

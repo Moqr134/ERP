@@ -47,6 +47,7 @@ namespace ERP_API.Controllers
             var user = _mapper.Map<UserOut>(token);
             Response.Cookies.Append("AuthToken", token.Token, CreateAuthCookieOptions());
             Response.Cookies.Append("RefreshToken", token.RefreshToken, CreateRefreshCookieOptions());
+            _UserId = user.Id;
             UserManager = user;
             return Ok("تم تسجيل الدخول بنجاح");
         }
@@ -71,6 +72,7 @@ namespace ERP_API.Controllers
             var user = _mapper.Map<UserOut>(token);
             Response.Cookies.Append("AuthToken", token.Token, CreateAuthCookieOptions());
             Response.Cookies.Append("RefreshToken", token.RefreshToken, CreateRefreshCookieOptions());
+            _UserId = user.Id;
             UserManager = user;
             return Ok("تم تجديد الجلسة بنجاح");
         }

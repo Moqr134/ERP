@@ -1,6 +1,5 @@
 ﻿using ERPDto.UserDto;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using PRMS_Clint.Services;
 using System.Net;
 using System.Net.Http.Json;
@@ -24,17 +23,15 @@ namespace ERP_Clint.Service
             try
             {                
                 var response = await _accountService.GetUserInfo();
-                if (response.StatusCode==HttpStatusCode.Unauthorized)
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     var refreshResponse = await _accountService.RefreshToken();
                     if (!refreshResponse.IsSuccessStatusCode)
                     {
                         return _anonymous;
                     }
-                    else
-                    {
-                        response = await _accountService.GetUserInfo();
-                    }
+
+                    response = await _accountService.GetUserInfo();
                 }
                 if (!response.IsSuccessStatusCode)
                 {
@@ -48,10 +45,10 @@ namespace ERP_Clint.Service
                     return _anonymous;
                 }
                 var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, userInfo.UserName),
-                new Claim(ClaimTypes.Email, userInfo.Email)
-            };
+                {
+                    new Claim(ClaimTypes.Name, userInfo.UserName),
+                    new Claim(ClaimTypes.Email, userInfo.Email)
+                };
 
                 foreach (var role in userInfo.Roles)
                 {

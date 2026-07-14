@@ -16,7 +16,8 @@
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <button class="btn-secondary" @onclick="() => { search = string.Empty; }">مسح البحث</button>
-                <button class="btn-primary" @onclick="Reload">تحديث</button>
+                <button class="btn-primary" @onclick="OpenCreateModal">+ حركة جديدة</button>
+                <button class="btn-secondary" @onclick="Reload">تحديث</button>
             </div>
         </div>
     </div>
@@ -24,6 +25,13 @@
     @if (isLoading)
     {
         <div class="state-box">جاري تحميل الحركات...</div>
+    }
+    else if (!string.IsNullOrEmpty(loadError))
+    {
+        <div class="state-box state-box--error">
+            ⚠ @loadError
+            <button class="btn-secondary" @onclick="Reload">إعادة المحاولة</button>
+        </div>
     }
     else if (transactions is null || transactions.Count == 0)
     {
@@ -59,10 +67,23 @@
     }
 </div>
 
+<StockTransactionModal IsOpen="isCreateOpen" OnClose="CloseCreateModal" OnSuccess="HandleCreated" />
+
 @code {
     private List<StockTransactionDto> transactions = new();
     private bool isLoading = true;
     private string search = string.Empty;
+    private string? loadError;
+    private bool isCreateOpen;
+
+    private IEnumerable<StockTransactionDto> FilteredTransactions =>
+        string.IsNullOrWhiteSpace(search)
+            ? transactions
+            : transactions.Where(t =>
+                (t.ProductName ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (t.TransactionType ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (t.ReferenceId ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (t.Notes ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
@@ -72,9 +93,15 @@
     private async Task LoadTransactions()
     {
         isLoading = true;
+        loadError = null;
         try
         {
             transactions = await StockTransactionsService.GetStockTransactionsAsync();
+        }
+        catch
+        {
+            loadError = "تعذر تحميل حركات المخزون";
+            transactions = new();
         }
         finally
         {
@@ -84,12 +111,13 @@
 
     private async Task Reload() => await LoadTransactions();
 
-    private IEnumerable<StockTransactionDto> FilteredTransactions =>
-        string.IsNullOrWhiteSpace(search)
-            ? transactions
-            : transactions.Where(t => (t.ProductName ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
-                                   || (t.TransactionType ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
-                                   || (t.ReferenceId ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase));
+    private void OpenCreateModal() => isCreateOpen = true;
+    private void CloseCreateModal() => isCreateOpen = false;
+    private async Task HandleCreated()
+    {
+        isCreateOpen = false;
+        await LoadTransactions();
+    }
 }
 
 <style>
@@ -104,7 +132,8 @@
     tbody td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); color: #e8edf2; }
     tbody tr:hover { background: rgba(249,115,22,0.03); }
     .mono { font-family: monospace; color: rgba(255,255,255,0.75); }
-    .btn-secondary { background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e8edf2; padding:8px 12px; border-radius:10px; }
-    .btn-primary { background: linear-gradient(135deg,#f97316,#c2410c); border:none; color:#fff; padding:8px 12px; border-radius:10px; }
+    .btn-secondary { background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e8edf2; padding:8px 12px; border-radius:10px; cursor:pointer; }
+    .btn-primary { background: linear-gradient(135deg,#f97316,#c2410c); border:none; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; }
     .state-box { padding: 28px; text-align:center; color: rgba(255,255,255,0.45); }
+    .state-box--error { color: #f87171; display:flex; flex-direction:column; gap:12px; align-items:center; }
 </style>

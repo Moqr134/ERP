@@ -29,16 +29,29 @@ namespace ERP_API.App.Service
 
         public async Task<UserTokenDto> Login(LoginModel Model)
         {
-            Users? user = await _UserService.GetFullUser(Model.Username);
-            if (user == null)
+            const string invalidCredentialsMessage = "اسم المستخدم أو كلمة المرور غير صحيحة";
+
+            Users? user;
+            try
             {
-                throw new KeyNotFoundException("المستخدم غير موجود");
+                user = await _UserService.GetFullUser(Model.Username);
             }
+            catch (KeyNotFoundException)
+            {
+                throw new UnauthorizedAccessException(invalidCredentialsMessage);
+            }
+
+            if (user == null || !user.IsActive)
+            {
+                throw new UnauthorizedAccessException(invalidCredentialsMessage);
+            }
+
             var checkPassword = passwordHashing.VerifyPassword(Model.Password, user.HashPassword);
             if (!checkPassword)
             {
-                throw new UnauthorizedAccessException("كلمة المرور غير صحيحة");
+                throw new UnauthorizedAccessException(invalidCredentialsMessage);
             }
+
             var roleId = user.UserRoles.FirstOrDefault()?.RoleId
                 ?? throw new UnauthorizedAccessException("المستخدم غير مرتبط بأي دور");
             var permisson = await _UserService.GetUserPermissions(user.Id, roleId);
@@ -47,13 +60,15 @@ namespace ERP_API.App.Service
             {
                 throw new Exception("فشل في إنشاء التوكن");
             }
+
+            // Refresh token hash + expiry already saved inside CreateTokenResponse
             user.Token = token.AccessToken;
-            user.RefreshToken = token.RefreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(jwt.RefreshTokenDays);
             user.IsOnline = true;
             user.LastLogin = DateTime.UtcNow.AddHours(3);
             UserTokenDto userToken = new UserTokenDto();
             _mapper.Map<Users, UserTokenDto>(user, userToken);
+            userToken.RefreshToken = token.RefreshToken;
+            userToken.Token = token.AccessToken;
             _context.Users.Entry(user);
             await _context.SaveChangesAsync();
             return userToken;
@@ -91,9 +106,9 @@ namespace ERP_API.App.Service
         public async Task<UserTokenDto> RefreshToken(string refreshToken)
         {
             Users? users = await _UserService.GetUserByRefreshToken(refreshToken);
-            if (users == null)
+            if (users == null || !users.IsActive)
             {
-                throw new KeyNotFoundException("المستخدم غير موجود");
+                throw new UnauthorizedAccessException("انتهت صلاحية جلسة الدخول");
             }
             var roleId = users.UserRoles.FirstOrDefault()?.RoleId
                 ?? throw new UnauthorizedAccessException("المستخدم غير مرتبط بأي دور");
@@ -103,13 +118,14 @@ namespace ERP_API.App.Service
             {
                 throw new UnauthorizedAccessException("انتهت صلاحية جلسة الدخول");
             }
+
             users.Token = token.AccessToken;
-            users.RefreshToken = token.RefreshToken;
-            users.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(jwt.RefreshTokenDays);
             users.IsOnline = true;
             users.LastLogin = DateTime.UtcNow.AddHours(3);
             UserTokenDto userToken = new UserTokenDto();
             _mapper.Map<Users, UserTokenDto>(users, userToken);
+            userToken.RefreshToken = token.RefreshToken;
+            userToken.Token = token.AccessToken;
             _context.Users.Entry(users);
             await _context.SaveChangesAsync();
             return userToken;

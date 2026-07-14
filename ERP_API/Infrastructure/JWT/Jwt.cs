@@ -28,16 +28,23 @@ public class Jwt : IScopped
     {
         SymmetricSecurityKey securityKey = new SymmetricSecurityKey(symmetricKey);
         string algorithms = SecurityAlgorithms.HmacSha256Signature;
+        var distinctPermissions = permations
+            .Where(p => !string.IsNullOrWhiteSpace(p.Name))
+            .GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToList();
+
         List<Claim> claims =
         [
             new Claim(ClaimTypes.Name, user.Username),
             new Claim("USERNAME", user.Username),
             new Claim("ID", user.Id.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email ?? string.Empty)
         ];
-        for (int i = 0; i < permations.Count; i++)
+        for (int i = 0; i < distinctPermissions.Count; i++)
         {
-            claims.Add(new Claim(ClaimTypes.Role, permations[i].Name));
+            claims.Add(new Claim(ClaimTypes.Role, distinctPermissions[i].Name));
         }
         SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
         {
@@ -102,7 +109,7 @@ public class Jwt : IScopped
     private async Task<string> GenerateAndSaveRefreshTokenAsync(Users user)
     {
         var refreshToken = GenerateRefreshToken();
-        user.RefreshToken = refreshToken;
+        user.RefreshToken = TokenHasher.Hash(refreshToken);
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(settings.RefreshTokenDays);
         await dbContext.SaveChangesAsync();
         return refreshToken;

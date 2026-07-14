@@ -1,14 +1,24 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Pages.AccountPages
+@inject NavigationManager Navigation
+
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(Program).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(LoginLayout)">
                 <NotAuthorized>
-                    <div style="padding: 20px; text-align: center;">
-                        <h3>تنبيه حماية</h3>
-                        <p>عذراً، أنت غير مخول لعرض هذه الصفحة. يرجى تسجيل الدخول أولاً.</p>
-                        <a href="/login" class="btn btn-primary">الانتقال لصفحة تسجيل الدخول</a>
-                    </div>
+                    @if (context.User?.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin ReturnUrl="@Navigation.ToBaseRelativePath(Navigation.Uri)" />
+                    }
+                    else
+                    {
+                        <div style="padding: 20px; text-align: center;">
+                            <h3>تنبيه حماية</h3>
+                            <p>عذراً، أنت غير مخول لعرض هذه الصفحة.</p>
+                            <a href="/" class="btn btn-primary">العودة للرئيسية</a>
+                        </div>
+                    }
                 </NotAuthorized>
                 <Authorizing>
                     <p style="text-align: center; padding: 20px;">جاري التحقق من الهوية والتعرف على الصلاحيات...</p>

@@ -1,14 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ERPDto.PaigingDto
+﻿namespace ERPDto.PaigingDto
 {
     public class PageDto
     {
-        public int PageSize { get; set; } = 10;
-        public int PageIndex { get; set; } = 1;
+        private int _pageSize = 10;
+        private int _pageIndex = 1;
+
+        public int PageSize
+        {
+            get => _pageSize;
+            set => _pageSize = value is < 1 ? 10 : value > 100 ? 100 : value;
+        }
+
+        public int PageIndex
+        {
+            get => _pageIndex;
+            set => _pageIndex = value < 1 ? 1 : value;
+        }
+
+        public string? SearchTerm { get; set; }
+        public int CategoryId { get; set; }
     }
 }

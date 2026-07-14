@@ -20,6 +20,10 @@ DBConn.ConnectionString = builder.Configuration.GetConnectionString("DefaultConn
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException("Jwt settings are not configured.");
 
+if (string.IsNullOrWhiteSpace(jwtSettings.SecretKey))
+    throw new InvalidOperationException(
+        "Jwt:SecretKey is not configured. Set it via environment variable Jwt__SecretKey, User Secrets, or appsettings.Development.json.");
+
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 
 builder.Services.AddControllers();
@@ -41,7 +45,7 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(cfg =>
                 {
-                    cfg.RequireHttpsMetadata = false;
+                    cfg.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
                     cfg.SaveToken = true;
 
                     byte[] symmetrickey = Convert.FromBase64String(jwtSettings.SecretKey);
@@ -98,6 +102,8 @@ app.UseMiddleware<ErrorHandler>();
 app.UseHttpsRedirection();
 
 app.UseCors("AllowWepApp");
+
+app.UseMiddleware<CsrfHeaderMiddleware>();
 
 app.UseAuthentication();
 

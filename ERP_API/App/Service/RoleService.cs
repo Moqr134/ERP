@@ -37,9 +37,9 @@ namespace ERP_API.App.Service
             {
                 throw new KeyNotFoundException("لم يتم العثور على الدور بالمعرف المحدد.");
             }
-            if(role.Name!=null)
+            if (roleDto.Name != null)
                 role.Name = roleDto.Name;
-            if(role.Description!=null)
+            if (roleDto.Description != null)
                 role.Description = roleDto.Description;
             role.UpdateDate = DateTime.UtcNow.AddHours(3);
             role.UpdateUserId = UpdateUserId;

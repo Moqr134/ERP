@@ -1,8 +1,8 @@
 using ERPDto.StockTransactionDto;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using ERP_Clint.Service;
 
 namespace ERP_Clint.Service.InventoryService
 {
@@ -24,27 +24,16 @@ namespace ERP_Clint.Service.InventoryService
         {
             var json = JsonSerializer.Serialize(model);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/StockTransactions/AddStockTransaction")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PostAsync("api/StockTransactions/AddStockTransaction", content);
         }
 
-        public async Task<List<ERPDto.StockTransactionDto.StockTransactionDto>> GetStockTransactionsAsync()
+        public async Task<List<StockTransactionDto>> GetStockTransactionsAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, "api/StockTransactions/GetStockTransactions");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<List<ERPDto.StockTransactionDto.StockTransactionDto>>() ?? new List<ERPDto.StockTransactionDto.StockTransactionDto>();
-            }
-            return new List<ERPDto.StockTransactionDto.StockTransactionDto>();
+            var response = await _httpClient.GetAsync("api/StockTransactions/GetStockTransactions");
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر تحميل حركات المخزون", response.StatusCode);
+
+            return await response.Content.ReadFromJsonAsync<List<StockTransactionDto>>() ?? new List<StockTransactionDto>();
         }
     }
 }

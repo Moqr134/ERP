@@ -59,7 +59,15 @@
 
     private async Task HandleLogout()
     {
-        await AccountService.Logout();
+        try
+        {
+            await AccountService.Logout();
+        }
+        catch
+        {
+            // continue local logout even if API call fails
+        }
+
         CostumAuth.NotifyUserAuthenticationChanged();
         Navigation.NavigateTo("/login");
     }
