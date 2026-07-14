@@ -1,0 +1,177 @@
+@page "/reports/sales"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using ERP_Clint.Security
+@using ERP_Clint.Service
+@using ERP_Clint.Service.ReportsService
+@using ERPDto.ReportsDto
+@attribute [Authorize(Roles = "FullAccess,GetSalesReport")]
+@inject IReportsService ReportsService
+
+<PageTitle>تقرير المبيعات</PageTitle>
+
+<div class="page-hero page-hero--sales">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">التقارير</p>
+        <h1>تقرير المبيعات</h1>
+        <p>تحليل الإيرادات، الخصومات، طرق الدفع، وأداء المنتجات والكاشير</p>
+    </div>
+</div>
+
+<div class="report-nav">
+    <a class="report-nav__item" href="reports">الشامل</a>
+    <a class="report-nav__item active" href="reports/sales">المبيعات</a>
+    <a class="report-nav__item" href="reports/products">المنتجات</a>
+    <a class="report-nav__item" href="reports/categories">الأصناف</a>
+    <a class="report-nav__item" href="reports/users">المستخدمون</a>
+    <a class="report-nav__item" href="reports/stock">المخزون</a>
+</div>
+
+<ReportFilters FromDate="fromDate" FromDateChanged="v => fromDate = v"
+               ToDate="toDate" ToDateChanged="v => toDate = v"
+               OnApply="Load" IsBusy="isLoading" />
+
+@if (isLoading)
+{
+    <div class="state-box">جاري تحميل تقرير المبيعات...</div>
+}
+else if (!string.IsNullOrEmpty(loadError))
+{
+    <div class="state-box state-box--error">
+        ⚠ @loadError
+        <button class="btn-secondary" @onclick="() => Load()">إعادة المحاولة</button>
+    </div>
+}
+else if (report is not null)
+{
+    <div class="kpi-grid kpi-grid--animate">
+        <div class="kpi-card kpi-card--lift kpi-card--sales">
+            <div class="kpi-card__icon">💵</div>
+            <div class="kpi-card__value">@report.NetSales.ToString("N0")</div>
+            <div class="kpi-card__label">صافي المبيعات</div>
+        </div>
+        <div class="kpi-card kpi-card--lift">
+            <div class="kpi-card__icon">🧾</div>
+            <div class="kpi-card__value">@report.TotalInvoices</div>
+            <div class="kpi-card__label">عدد الفواتير</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--low">
+            <div class="kpi-card__icon">🏷️</div>
+            <div class="kpi-card__value">@report.TotalDiscount.ToString("N0")</div>
+            <div class="kpi-card__label">إجمالي الخصومات</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--value">
+            <div class="kpi-card__icon">📊</div>
+            <div class="kpi-card__value">@report.AverageInvoice.ToString("N0")</div>
+            <div class="kpi-card__label">متوسط الفاتورة</div>
+        </div>
+    </div>
+
+    <div class="kpi-grid" style="margin-top:14px">
+        <div class="kpi-card">
+            <div class="kpi-card__icon">💵</div>
+            <div class="kpi-card__value">@report.CashAmount.ToString("N0")</div>
+            <div class="kpi-card__label">نقدي (@report.CashInvoices)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__icon">💳</div>
+            <div class="kpi-card__value">@report.CardAmount.ToString("N0")</div>
+            <div class="kpi-card__label">بطاقة (@report.CardInvoices)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__icon">📦</div>
+            <div class="kpi-card__value">@report.ItemsSold.ToString("N0")</div>
+            <div class="kpi-card__label">وحدات مباعة</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__icon">📈</div>
+            <div class="kpi-card__value">@report.GrossSales.ToString("N0")</div>
+            <div class="kpi-card__label">إجمالي قبل الخصم</div>
+        </div>
+    </div>
+
+    <div class="report-grid">
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>اتجاه المبيعات اليومي</h3></div>
+            <TrendChart Items="report.DailyTrend" />
+        </section>
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>أفضل المنتجات</h3></div>
+            <BarChart Items="report.TopProducts" Tone="orange" />
+        </section>
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>أداء الكاشير</h3></div>
+            <BarChart Items="report.TopCashiers" Tone="green" />
+        </section>
+        <section class="report-panel report-panel--wide">
+            <div class="report-panel__header"><h3>أحدث الفواتير</h3></div>
+            @if (report.RecentSales.Count == 0)
+            {
+                <div class="report-empty">لا توجد فواتير في الفترة المحددة</div>
+            }
+            else
+            {
+                <div class="report-table-wrap">
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>الوقت</th>
+                                <th>الفاتورة</th>
+                                <th>الدفع</th>
+                                <th>الخصم</th>
+                                <th>الإجمالي</th>
+                                <th>الكاشير</th>
+                                <th>البنود</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in report.RecentSales)
+                            {
+                                <tr>
+                                    <td>@s.CreateDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td class="mono">@s.InvoiceNumber</td>
+                                    <td>@(s.PaymentMethod == "Cash" ? "نقدي" : s.PaymentMethod == "Card" ? "بطاقة" : s.PaymentMethod)</td>
+                                    <td>@s.Discount.ToString("N0")</td>
+                                    <td>@s.Total.ToString("N0")</td>
+                                    <td>@(s.CashierName ?? "—")</td>
+                                    <td>@s.LinesCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    </div>
+}
+
+@code {
+    private SalesReport? report;
+    private bool isLoading = true;
+    private string? loadError;
+    private DateTime? fromDate = DateTime.Today.AddDays(-29);
+    private DateTime? toDate = DateTime.Today;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load(ReportFilterDto? filter = null)
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            filter ??= new ReportFilterDto { FromDate = fromDate, ToDate = toDate, Top = 10 };
+            report = await ReportsService.GetSalesReportAsync(filter);
+        }
+        catch (Exception ex)
+        {
+            report = null;
+            loadError = ex is ApiRequestException apiEx ? apiEx.Message : "تعذر تحميل تقرير المبيعات";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

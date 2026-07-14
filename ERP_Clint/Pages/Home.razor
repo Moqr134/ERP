@@ -1,7 +1,9 @@
 ﻿@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using ERP_Clint.Service.InventoryService
+@using ERP_Clint.Service.ReportsService
 @using ERPDto.ProductsDto
+@using ERPDto.ReportsDto
 @using ERP_Clint.Pages.Inventory.Stock
 @using ERP_Clint.Security
 @page "/"
@@ -9,13 +11,18 @@
 @attribute [Authorize]
 @inject IProductService ProductService
 @inject ICatigoryService CategoryService
+@inject IReportsService ReportsService
 
 <PageTitle>الرئيسية</PageTitle>
 
 <div class="home-page">
-    <div class="home-header">
-        <h1>مرحباً بك 👋</h1>
-        <p>نظرة سريعة على حالة المخزون والعمليات</p>
+    <div class="page-hero">
+        <div class="page-hero__glow"></div>
+        <div class="page-hero__content">
+            <p class="page-hero__eyebrow">لوحة التحكم</p>
+            <h1>مرحباً بك في نظام ERP</h1>
+            <p>نظرة سريعة على المخزون، المبيعات، والاختصارات اليومية</p>
+        </div>
     </div>
 
     @if (isLoading)
@@ -24,28 +31,65 @@
     }
     else
     {
-        <div class="kpi-grid">
-            <div class="kpi-card kpi-card--total">
+        <div class="kpi-grid kpi-grid--animate">
+            <div class="kpi-card kpi-card--lift kpi-card--total">
                 <div class="kpi-card__icon">🏷️</div>
-                <div class="kpi-card__value">@(productsInfo?.TotalProducts ?? 0)</div>
+                <div class="kpi-card__value">@(overview?.TotalProducts ?? productsInfo?.TotalProducts ?? 0)</div>
                 <div class="kpi-card__label">إجمالي المنتجات</div>
             </div>
-            <div class="kpi-card kpi-card--low">
+            <div class="kpi-card kpi-card--lift kpi-card--low">
                 <div class="kpi-card__icon">⚠️</div>
-                <div class="kpi-card__value">@(productsInfo?.ProductsCountLissMinStock ?? 0)</div>
+                <div class="kpi-card__value">@(overview?.LowStockProducts ?? productsInfo?.ProductsCountLissMinStock ?? 0)</div>
                 <div class="kpi-card__label">وصلت للحد الأدنى</div>
             </div>
-            <div class="kpi-card kpi-card--out">
+            <div class="kpi-card kpi-card--lift kpi-card--out">
                 <div class="kpi-card__icon">⛔</div>
-                <div class="kpi-card__value">@(productsInfo?.ProductsStockOut ?? 0)</div>
+                <div class="kpi-card__value">@(overview?.OutOfStockProducts ?? productsInfo?.ProductsStockOut ?? 0)</div>
                 <div class="kpi-card__label">نافذة من المخزون</div>
             </div>
-            <div class="kpi-card kpi-card--value">
+            <div class="kpi-card kpi-card--lift kpi-card--value">
                 <div class="kpi-card__icon">📦</div>
-                <div class="kpi-card__value">@categoriesCount</div>
+                <div class="kpi-card__value">@(overview?.TotalCategories ?? categoriesCount)</div>
                 <div class="kpi-card__label">عدد الأصناف</div>
             </div>
         </div>
+
+        @if (overview is not null)
+        {
+            <div class="kpi-grid" style="margin-top:14px">
+                <div class="kpi-card kpi-card--lift kpi-card--sales">
+                    <div class="kpi-card__icon">💰</div>
+                    <div class="kpi-card__value">@overview.RevenueToday.ToString("N0")</div>
+                    <div class="kpi-card__label">إيراد اليوم (@overview.SalesToday فاتورة)</div>
+                </div>
+                <div class="kpi-card kpi-card--lift">
+                    <div class="kpi-card__icon">🧾</div>
+                    <div class="kpi-card__value">@overview.SalesRevenue.ToString("N0")</div>
+                    <div class="kpi-card__label">إجمالي المبيعات</div>
+                </div>
+                <div class="kpi-card kpi-card--lift">
+                    <div class="kpi-card__icon">👥</div>
+                    <div class="kpi-card__value">@overview.OnlineUsers</div>
+                    <div class="kpi-card__label">متصلون الآن</div>
+                </div>
+                <div class="kpi-card kpi-card--lift">
+                    <div class="kpi-card__icon">💵</div>
+                    <div class="kpi-card__value">@overview.InventoryCostValue.ToString("N0")</div>
+                    <div class="kpi-card__label">قيمة المخزون</div>
+                </div>
+            </div>
+
+            <div class="report-grid" style="margin-top:18px">
+                <section class="report-panel">
+                    <div class="report-panel__header"><h3>المبيعات آخر 7 أيام</h3></div>
+                    <ERP_Clint.Pages.Reports.TrendChart Items="overview.SalesLast7Days" />
+                </section>
+                <section class="report-panel">
+                    <div class="report-panel__header"><h3>أفضل المنتجات مبيعاً</h3></div>
+                    <ERP_Clint.Pages.Reports.BarChart Items="overview.TopSellingProducts" UseCount="true" />
+                </section>
+            </div>
+        }
 
         <div class="quick-links">
             <h3>اختصارات سريعة</h3>
@@ -82,6 +126,14 @@
                         </a>
                     </Authorized>
                 </AuthorizeView>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview, PermissionNames.GetSalesReport)">
+                    <Authorized>
+                        <a class="quick-link" href="reports">
+                            <span>📊</span>
+                            <span>التقارير الشاملة</span>
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
             </div>
         </div>
     }
@@ -90,6 +142,7 @@
 <StockTransactionModal IsOpen="isStockModalOpen" OnClose="CloseStockModal" OnSuccess="HandleStockSuccess" />
 @code {
     private ProductsInfo? productsInfo;
+    private DashboardOverviewReport? overview;
     private int categoriesCount;
     private bool isLoading = true;
     private bool isStockModalOpen;
@@ -100,9 +153,11 @@
         {
             var infoTask = ProductService.GetProductsInfo(new ERPDto.PaigingDto.PageDto());
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
-            await Task.WhenAll(infoTask, categoriesTask);
+            var overviewTask = TryLoadOverview();
+            await Task.WhenAll(infoTask, categoriesTask, overviewTask);
             productsInfo = await infoTask;
             categoriesCount = (await categoriesTask).Count;
+            overview = await overviewTask;
         }
         catch
         {
@@ -112,6 +167,18 @@
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private async Task<DashboardOverviewReport?> TryLoadOverview()
+    {
+        try
+        {
+            return await ReportsService.GetOverviewAsync(new ReportFilterDto { Top = 5 });
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -128,11 +195,11 @@
 
     private async Task HandleStockSuccess()
     {
-        // refresh KPIs
         isLoading = true;
         try
         {
             productsInfo = await ProductService.GetProductsInfo(new ERPDto.PaigingDto.PageDto());
+            overview = await TryLoadOverview();
         }
         catch
         {
@@ -149,46 +216,12 @@
     .home-page {
         display: flex;
         flex-direction: column;
-        gap: 28px;
+        gap: 8px;
     }
 
-    .home-header h1 {
-        margin: 0 0 8px;
-        font-size: 26px;
-        font-weight: 800;
-        color: #fff;
+    .quick-links {
+        margin-top: 22px;
     }
-
-    .home-header p {
-        margin: 0;
-        color: rgba(255,255,255,0.55);
-        font-size: 14px;
-    }
-
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-    }
-
-    .kpi-card {
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.07);
-        border-radius: 16px;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .kpi-card__icon { font-size: 22px; }
-    .kpi-card__value { font-size: 28px; font-weight: 800; color: #fff; }
-    .kpi-card__label { font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 600; }
-
-    .kpi-card--total { border-color: rgba(59,130,246,0.25); }
-    .kpi-card--low   { border-color: rgba(234,179,8,0.25); }
-    .kpi-card--out   { border-color: rgba(239,68,68,0.25); }
-    .kpi-card--value { border-color: rgba(249,115,22,0.25); }
 
     .quick-links h3 {
         margin: 0 0 14px;
@@ -215,21 +248,15 @@
         text-decoration: none;
         font-weight: 600;
         font-size: 14px;
-        transition: background .15s, border-color .15s, color .15s;
+        transition: background .15s, border-color .15s, color .15s, transform .15s;
+        animation: fade-up 0.4s ease both;
     }
 
     .quick-link:hover {
         background: rgba(249,115,22,0.1);
         border-color: rgba(249,115,22,0.35);
         color: #fff;
-    }
-
-    .state-box {
-        padding: 24px;
-        text-align: center;
-        color: rgba(255,255,255,0.5);
-        background: rgba(255,255,255,0.03);
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.07);
+        transform: translateY(-2px);
+        text-decoration: none;
     }
 </style>

@@ -1,0 +1,182 @@
+@page "/reports/users"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using ERP_Clint.Service
+@using ERP_Clint.Service.ReportsService
+@using ERPDto.ReportsDto
+@attribute [Authorize(Roles = "FullAccess,GetUsersReport")]
+@inject IReportsService ReportsService
+
+<PageTitle>تقرير المستخدمين</PageTitle>
+
+<div class="page-hero page-hero--users">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">التقارير</p>
+        <h1>تقرير المستخدمين</h1>
+        <p>النشاط، الأدوار، وأداء عمليات البيع حسب المستخدم</p>
+    </div>
+</div>
+
+<div class="report-nav">
+    <a class="report-nav__item" href="reports">الشامل</a>
+    <a class="report-nav__item" href="reports/sales">المبيعات</a>
+    <a class="report-nav__item" href="reports/products">المنتجات</a>
+    <a class="report-nav__item" href="reports/categories">الأصناف</a>
+    <a class="report-nav__item active" href="reports/users">المستخدمون</a>
+    <a class="report-nav__item" href="reports/stock">المخزون</a>
+</div>
+
+<ReportFilters FromDate="fromDate" FromDateChanged="v => fromDate = v"
+               ToDate="toDate" ToDateChanged="v => toDate = v"
+               OnApply="Load" IsBusy="isLoading" />
+
+@if (isLoading)
+{
+    <div class="state-box">جاري تحميل تقرير المستخدمين...</div>
+}
+else if (!string.IsNullOrEmpty(loadError))
+{
+    <div class="state-box state-box--error">
+        ⚠ @loadError
+        <button class="btn-secondary" @onclick="() => Load()">إعادة المحاولة</button>
+    </div>
+}
+else if (report is not null)
+{
+    <div class="kpi-grid kpi-grid--animate">
+        <div class="kpi-card kpi-card--lift">
+            <div class="kpi-card__icon">👥</div>
+            <div class="kpi-card__value">@report.TotalUsers</div>
+            <div class="kpi-card__label">إجمالي المستخدمين</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--sales">
+            <div class="kpi-card__icon">✅</div>
+            <div class="kpi-card__value">@report.ActiveUsers</div>
+            <div class="kpi-card__label">نشطون</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--out">
+            <div class="kpi-card__icon">⛔</div>
+            <div class="kpi-card__value">@report.InactiveUsers</div>
+            <div class="kpi-card__label">معطّلون</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--value">
+            <div class="kpi-card__icon">🟢</div>
+            <div class="kpi-card__value">@report.OnlineUsers</div>
+            <div class="kpi-card__label">متصلون / بائعون: @report.UsersWithSales</div>
+        </div>
+    </div>
+
+    <div class="report-grid">
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>التوزيع حسب الدور</h3></div>
+            <BarChart Items="report.ByRole" UseCount="true" Tone="blue" />
+        </section>
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>أفضل الكاشير (بالإيراد)</h3></div>
+            <BarChart Items="@(report.TopCashiers.Select(u => new NamedMetricDto { Name = u.Username, Value = u.SalesTotal, Count = u.SalesCount }).ToList())" Tone="green" />
+        </section>
+        <section class="report-panel report-panel--wide">
+            <div class="report-panel__header"><h3>أداء المستخدمين في المبيعات</h3></div>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>المستخدم</th>
+                            <th>الحالة</th>
+                            <th>الأدوار</th>
+                            <th>فواتير</th>
+                            <th>الإيراد</th>
+                            <th>آخر دخول</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in report.TopCashiers)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="prod-name">@u.Username</div>
+                                    <div class="prod-code">@u.Email</div>
+                                </td>
+                                <td>
+                                    @if (u.IsOnline)
+                                    {
+                                        <span class="badge badge--ok">متصل</span>
+                                    }
+                                    else if (u.IsActive)
+                                    {
+                                        <span class="badge badge--mid">نشط</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge--low">معطّل</span>
+                                    }
+                                </td>
+                                <td>@(u.RoleNames.Count == 0 ? "—" : string.Join("، ", u.RoleNames))</td>
+                                <td>@u.SalesCount</td>
+                                <td>@u.SalesTotal.ToString("N0")</td>
+                                <td>@(u.LastLogin?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <section class="report-panel report-panel--wide">
+            <div class="report-panel__header"><h3>أحدث تسجيلات الدخول</h3></div>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>المستخدم</th>
+                            <th>البريد</th>
+                            <th>آخر دخول</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in report.RecentLogins)
+                        {
+                            <tr>
+                                <td>@u.Username</td>
+                                <td>@u.Email</td>
+                                <td>@(u.LastLogin?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                <td>@(u.IsOnline ? "متصل" : u.IsActive ? "نشط" : "معطّل")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private UsersReport? report;
+    private bool isLoading = true;
+    private string? loadError;
+    private DateTime? fromDate = DateTime.Today.AddDays(-29);
+    private DateTime? toDate = DateTime.Today;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load(ReportFilterDto? filter = null)
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            filter ??= new ReportFilterDto { FromDate = fromDate, ToDate = toDate, Top = 10 };
+            report = await ReportsService.GetUsersReportAsync(filter);
+        }
+        catch (Exception ex)
+        {
+            report = null;
+            loadError = ex is ApiRequestException apiEx ? apiEx.Message : "تعذر تحميل تقرير المستخدمين";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

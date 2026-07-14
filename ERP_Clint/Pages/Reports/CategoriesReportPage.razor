@@ -1,0 +1,147 @@
+@page "/reports/categories"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using ERP_Clint.Service
+@using ERP_Clint.Service.ReportsService
+@using ERPDto.ReportsDto
+@attribute [Authorize(Roles = "FullAccess,GetCategoriesReport")]
+@inject IReportsService ReportsService
+
+<PageTitle>تقرير الأصناف</PageTitle>
+
+<div class="page-hero page-hero--categories">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">التقارير</p>
+        <h1>تقرير الأصناف</h1>
+        <p>توزيع المنتجات والقيمة المخزنية لكل صنف</p>
+    </div>
+</div>
+
+<div class="report-nav">
+    <a class="report-nav__item" href="reports">الشامل</a>
+    <a class="report-nav__item" href="reports/sales">المبيعات</a>
+    <a class="report-nav__item" href="reports/products">المنتجات</a>
+    <a class="report-nav__item active" href="reports/categories">الأصناف</a>
+    <a class="report-nav__item" href="reports/users">المستخدمون</a>
+    <a class="report-nav__item" href="reports/stock">المخزون</a>
+</div>
+
+<div class="report-filters">
+    <div class="report-filters__actions">
+        <button class="btn-secondary" @onclick="Load" disabled="@isLoading">تحديث</button>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="state-box">جاري تحميل تقرير الأصناف...</div>
+}
+else if (!string.IsNullOrEmpty(loadError))
+{
+    <div class="state-box state-box--error">
+        ⚠ @loadError
+        <button class="btn-secondary" @onclick="Load">إعادة المحاولة</button>
+    </div>
+}
+else if (report is not null)
+{
+    <div class="kpi-grid kpi-grid--animate">
+        <div class="kpi-card kpi-card--lift kpi-card--total">
+            <div class="kpi-card__icon">🗂️</div>
+            <div class="kpi-card__value">@report.TotalCategories</div>
+            <div class="kpi-card__label">إجمالي الأصناف</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--value">
+            <div class="kpi-card__icon">📦</div>
+            <div class="kpi-card__value">@report.TotalProducts</div>
+            <div class="kpi-card__label">منتجات مرتبطة</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--sales">
+            <div class="kpi-card__icon">✅</div>
+            <div class="kpi-card__value">@report.CategoriesWithProducts</div>
+            <div class="kpi-card__label">أصناف نشطة</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--low">
+            <div class="kpi-card__icon">📭</div>
+            <div class="kpi-card__value">@report.EmptyCategories</div>
+            <div class="kpi-card__label">أصناف فارغة</div>
+        </div>
+    </div>
+
+    <div class="report-grid">
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>قيمة المخزون حسب الصنف</h3></div>
+            <BarChart Items="@(report.Items.Select(i => new NamedMetricDto { Name = i.Name, Value = i.InventoryCostValue, Count = i.ProductCount }).ToList())" Tone="orange" />
+        </section>
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>عدد المنتجات حسب الصنف</h3></div>
+            <BarChart Items="@(report.Items.Select(i => new NamedMetricDto { Name = i.Name, Count = i.ProductCount, Value = i.ProductCount }).ToList())" UseCount="true" Tone="teal" />
+        </section>
+        <section class="report-panel report-panel--wide">
+            <div class="report-panel__header">
+                <h3>تفاصيل الأصناف</h3>
+                <span class="muted">قيمة المخزون الإجمالية: @report.TotalInventoryCost.ToString("N0")</span>
+            </div>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>الصنف</th>
+                            <th>المنتجات</th>
+                            <th>المخزون</th>
+                            <th>منخفض</th>
+                            <th>نافذ</th>
+                            <th>قيمة التكلفة</th>
+                            <th>قيمة البيع</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in report.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="prod-name">@c.Name</div>
+                                    <div class="prod-code">@(string.IsNullOrWhiteSpace(c.Description) ? "—" : c.Description)</div>
+                                </td>
+                                <td>@c.ProductCount</td>
+                                <td>@c.TotalStock</td>
+                                <td>@c.LowStockCount</td>
+                                <td>@c.OutOfStockCount</td>
+                                <td>@c.InventoryCostValue.ToString("N0")</td>
+                                <td>@c.InventorySellValue.ToString("N0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private CategoriesReport? report;
+    private bool isLoading = true;
+    private string? loadError;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            report = await ReportsService.GetCategoriesReportAsync();
+        }
+        catch (Exception ex)
+        {
+            report = null;
+            loadError = ex is ApiRequestException apiEx ? apiEx.Message : "تعذر تحميل تقرير الأصناف";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

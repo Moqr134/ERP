@@ -98,9 +98,13 @@ code {
 
 /* خلفية وخط عامّين للتطبيق يتوافقون مع ثيم صفحة اللوگن */
 html, body {
-    background: var(--brand-bg);
+    background:
+        radial-gradient(1200px 500px at 85% -10%, rgba(249,115,22,0.08), transparent 50%),
+        radial-gradient(900px 420px at 5% 110%, rgba(56,189,248,0.05), transparent 45%),
+        var(--brand-bg);
     color: var(--brand-text);
     font-family: 'Cairo', sans-serif;
+    background-attachment: fixed;
 }
 
 a {

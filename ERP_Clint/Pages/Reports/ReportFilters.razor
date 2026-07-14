@@ -1,0 +1,60 @@
+@namespace ERP_Clint.Pages.Reports
+@using ERPDto.ReportsDto
+
+<div class="report-filters">
+    <div class="report-filters__field">
+        <label>من تاريخ</label>
+        <InputDate class="form-control" @bind-Value="FromDate" />
+    </div>
+    <div class="report-filters__field">
+        <label>إلى تاريخ</label>
+        <InputDate class="form-control" @bind-Value="ToDate" />
+    </div>
+    <div class="report-filters__actions">
+        <button class="btn-primary" @onclick="Apply" disabled="@IsBusy">تطبيق</button>
+        <button class="btn-secondary" @onclick="Reset" disabled="@IsBusy">إعادة تعيين</button>
+        @if (ShowQuickRanges)
+        {
+            <button class="btn-secondary" @onclick="() => SetRange(7)" disabled="@IsBusy">7 أيام</button>
+            <button class="btn-secondary" @onclick="() => SetRange(30)" disabled="@IsBusy">30 يوم</button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public DateTime? FromDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> FromDateChanged { get; set; }
+    [Parameter] public DateTime? ToDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> ToDateChanged { get; set; }
+    [Parameter] public EventCallback<ReportFilterDto> OnApply { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public bool ShowQuickRanges { get; set; } = true;
+
+    private async Task Apply()
+    {
+        await FromDateChanged.InvokeAsync(FromDate);
+        await ToDateChanged.InvokeAsync(ToDate);
+        await OnApply.InvokeAsync(new ReportFilterDto
+        {
+            FromDate = FromDate,
+            ToDate = ToDate,
+            Top = 10
+        });
+    }
+
+    private async Task Reset()
+    {
+        FromDate = null;
+        ToDate = null;
+        await FromDateChanged.InvokeAsync(null);
+        await ToDateChanged.InvokeAsync(null);
+        await OnApply.InvokeAsync(new ReportFilterDto { Top = 10 });
+    }
+
+    private async Task SetRange(int days)
+    {
+        ToDate = DateTime.Today;
+        FromDate = DateTime.Today.AddDays(-(days - 1));
+        await Apply();
+    }
+}

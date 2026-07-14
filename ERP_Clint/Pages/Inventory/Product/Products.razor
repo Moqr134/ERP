@@ -6,6 +6,15 @@
 @layout MainLayout
 @attribute [Authorize(Roles = "FullAccess,GetAllProductsAsync")]
 
+<div class="page-hero page-hero--products">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">المخزون</p>
+        <h1>إدارة المنتجات</h1>
+        <p>مراقبة المخزون والأسعار وحالة التوفر لكل منتج</p>
+    </div>
+</div>
+
 @if (!isLoading && loadError is null && productsInfo is not null)
 {
     <div class="kpi-grid">

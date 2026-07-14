@@ -77,7 +77,10 @@
     .app-shell {
         display: flex;
         min-height: 100vh;
-        background: var(--brand-bg, #0b0f14);
+        background:
+            radial-gradient(900px 360px at 100% 0%, rgba(249,115,22,0.07), transparent 55%),
+            radial-gradient(700px 280px at 0% 100%, rgba(56,189,248,0.04), transparent 50%),
+            var(--brand-bg, #0b0f14);
         color: var(--brand-text, #e8edf2);
         font-family: 'Cairo', sans-serif;
     }
@@ -85,11 +88,12 @@
     .app-sidebar {
         width: 260px;
         flex-shrink: 0;
-        background: #10151c;
+        background: linear-gradient(180deg, #121821 0%, #10151c 100%);
         border-left: 1px solid rgba(255,255,255,0.06);
         display: flex;
         flex-direction: column;
         padding: 20px 16px;
+        box-shadow: -8px 0 30px rgba(0,0,0,0.18);
     }
 
     .app-sidebar__brand {
@@ -113,6 +117,7 @@
         font-size: 13px;
         color: #fff;
         flex-shrink: 0;
+        box-shadow: 0 8px 20px rgba(249,115,22,0.25);
     }
 
     .app-sidebar__brand span {
@@ -239,6 +244,12 @@
         flex: 1;
         padding: 28px;
         overflow-y: auto;
+        animation: content-in 0.35s ease;
+    }
+
+    @@keyframes content-in {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     ::-webkit-scrollbar {

@@ -1,0 +1,157 @@
+@page "/reports/stock"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using ERP_Clint.Service
+@using ERP_Clint.Service.ReportsService
+@using ERPDto.ReportsDto
+@attribute [Authorize(Roles = "FullAccess,GetStockReport")]
+@inject IReportsService ReportsService
+
+<PageTitle>تقرير حركات المخزون</PageTitle>
+
+<div class="page-hero page-hero--stock">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">التقارير</p>
+        <h1>تقرير حركات المخزون</h1>
+        <p>تحليل الدخول والخروج والمنتجات الأكثر حركة</p>
+    </div>
+</div>
+
+<div class="report-nav">
+    <a class="report-nav__item" href="reports">الشامل</a>
+    <a class="report-nav__item" href="reports/sales">المبيعات</a>
+    <a class="report-nav__item" href="reports/products">المنتجات</a>
+    <a class="report-nav__item" href="reports/categories">الأصناف</a>
+    <a class="report-nav__item" href="reports/users">المستخدمون</a>
+    <a class="report-nav__item active" href="reports/stock">المخزون</a>
+</div>
+
+<ReportFilters FromDate="fromDate" FromDateChanged="v => fromDate = v"
+               ToDate="toDate" ToDateChanged="v => toDate = v"
+               OnApply="Load" IsBusy="isLoading" />
+
+@if (isLoading)
+{
+    <div class="state-box">جاري تحميل تقرير المخزون...</div>
+}
+else if (!string.IsNullOrEmpty(loadError))
+{
+    <div class="state-box state-box--error">
+        ⚠ @loadError
+        <button class="btn-secondary" @onclick="() => Load()">إعادة المحاولة</button>
+    </div>
+}
+else if (report is not null)
+{
+    <div class="kpi-grid kpi-grid--animate">
+        <div class="kpi-card kpi-card--lift">
+            <div class="kpi-card__icon">🔄</div>
+            <div class="kpi-card__value">@report.TotalMovements</div>
+            <div class="kpi-card__label">إجمالي الحركات</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--sales">
+            <div class="kpi-card__icon">⬇️</div>
+            <div class="kpi-card__value">@report.InCount</div>
+            <div class="kpi-card__label">دخول (@report.InQuantity وحدة)</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--out">
+            <div class="kpi-card__icon">⬆️</div>
+            <div class="kpi-card__value">@report.OutCount</div>
+            <div class="kpi-card__label">خروج (@report.OutQuantity وحدة)</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--value">
+            <div class="kpi-card__icon">📊</div>
+            <div class="kpi-card__value">@(report.InQuantity - report.OutQuantity)</div>
+            <div class="kpi-card__label">صافي الكمية</div>
+        </div>
+    </div>
+
+    <div class="report-grid">
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>الاتجاه اليومي</h3></div>
+            <TrendChart Items="report.DailyTrend" />
+        </section>
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>حسب نوع الحركة</h3></div>
+            <BarChart Items="report.ByType" UseCount="true" Tone="blue" />
+        </section>
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>المنتجات الأكثر حركة</h3></div>
+            <BarChart Items="report.TopMovedProducts" Tone="orange" />
+        </section>
+        <section class="report-panel report-panel--wide">
+            <div class="report-panel__header"><h3>أحدث الحركات</h3></div>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>الوقت</th>
+                            <th>المنتج</th>
+                            <th>النوع</th>
+                            <th>الكمية</th>
+                            <th>المرجع</th>
+                            <th>ملاحظات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in report.RecentMovements)
+                        {
+                            <tr>
+                                <td>@m.CreateDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@m.ProductName</td>
+                                <td>
+                                    @if (m.TransactionType == "In")
+                                    {
+                                        <span class="badge badge--ok">دخول</span>
+                                    }
+                                    else if (m.TransactionType == "Out")
+                                    {
+                                        <span class="badge badge--low">خروج</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge--mid">@m.TransactionType</span>
+                                    }
+                                </td>
+                                <td>@m.Quantity</td>
+                                <td class="mono">@(m.ReferenceId ?? "—")</td>
+                                <td>@(string.IsNullOrWhiteSpace(m.Notes) ? "—" : m.Notes)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private StockReport? report;
+    private bool isLoading = true;
+    private string? loadError;
+    private DateTime? fromDate = DateTime.Today.AddDays(-29);
+    private DateTime? toDate = DateTime.Today;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load(ReportFilterDto? filter = null)
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            filter ??= new ReportFilterDto { FromDate = fromDate, ToDate = toDate, Top = 10 };
+            report = await ReportsService.GetStockReportAsync(filter);
+        }
+        catch (Exception ex)
+        {
+            report = null;
+            loadError = ex is ApiRequestException apiEx ? apiEx.Message : "تعذر تحميل تقرير المخزون";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
