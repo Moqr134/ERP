@@ -1,6 +1,7 @@
 ﻿using ERP_Clint.Service.InventoryService;
 using ERPDto.CategoriesDto;
 using ERPDto.ProductsDto;
+using ERPDto.WarehouseDto;
 using Microsoft.AspNetCore.Components;
 using System.Net.Http.Json;
 
@@ -12,9 +13,14 @@ namespace ERP_Clint.Pages.Inventory.Product
         [Inject] private IProductService ProductService { get; set; } = default!;
         [Parameter] public ProductDto? EditingProduct { get; set; }
         [Parameter] public List<CategoryDto>? Categories { get; set; }
+        [Parameter] public List<WarehouseDto>? Warehouses { get; set; }
         [Parameter] public EventCallback<ProductDto> OnSaved { get; set; }
         [Parameter] public EventCallback OnClose { get; set; }
         [Inject] private HttpClient Http { get; set; } = default!;
+
+        private IEnumerable<WarehouseDto> ActiveWarehouses =>
+            (Warehouses ?? new List<WarehouseDto>())
+                .Where(w => w.IsActive || w.Id == (IsEditMode ? formModel.WarehouseId : Model.WarehouseId));
 
         private UpdateProductModel formModel = new();
         private CreateProductModel Model = new();
@@ -36,6 +42,7 @@ namespace ERP_Clint.Pages.Inventory.Product
                    CostPrice = EditingProduct.CostPrice,
                    MinStockLevel = EditingProduct.MinStockLevel,
                    CategoryId = EditingProduct.CategoriesId,
+                   WarehouseId = EditingProduct.WarehouseId,
                 };
             }
             else

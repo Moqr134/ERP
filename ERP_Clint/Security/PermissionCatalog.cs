@@ -70,6 +70,15 @@ public static class PermissionCatalog
             new(PermissionNames.DeleteSuppliers, "حذف مورد"),
         ]),
 
+        new("warehouses", "المخازن",
+        [
+            new(PermissionNames.GetAllWarehouses, "عرض المخازن"),
+            new(PermissionNames.GetWarehouseById, "عرض تفاصيل مخزن"),
+            new(PermissionNames.AddWarehouse, "إضافة مخزن"),
+            new(PermissionNames.EditWarehouse, "تعديل مخزن"),
+            new(PermissionNames.DeleteWarehouse, "حذف مخزن"),
+        ]),
+
         new("stock", "حركات المخزون",
         [
             new(PermissionNames.GetStockTransactions, "عرض حركات المخزون"),

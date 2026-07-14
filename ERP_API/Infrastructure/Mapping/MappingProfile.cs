@@ -5,7 +5,9 @@ using ERP_API.Domin.RoleEntity;
 using ERP_API.Domin.StockTransactionsEntity;
 using ERP_API.Domin.SuppliersEntity;
 using ERP_API.Domin.UsersEntity;
+using ERP_API.Domin.WarehouseEntity;
 using ERPDto.CategoriesDto;
+using ERPDto.WarehouseDto;
 using ERPDto.ProductsDto;
 using ERPDto.RolesDto;
 using ERPDto.StockTransactionDto;
@@ -38,5 +40,7 @@ public class MappingProfile : Profile
         CreateMap<SuppliersDto, Suppliers>();
         CreateMap<SuppliersModel, Suppliers>();
         CreateMap<Suppliers, SuppliersModel>();
+        CreateMap<Warehouse, WarehouseDto>();
+        CreateMap<WarehouseModel, Warehouse>();
     }
 }

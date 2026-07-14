@@ -46,6 +46,9 @@ namespace ERP_API.App.Service
             if (pageDto.CategoryId > 0)
                 query = query.Where(x => x.CategoriesId == pageDto.CategoryId);
 
+            if (pageDto.WarehouseId > 0)
+                query = query.Where(x => x.WarehouseId == pageDto.WarehouseId);
+
             if (!string.IsNullOrWhiteSpace(pageDto.SearchTerm))
             {
                 var term = pageDto.SearchTerm.Trim();
@@ -78,8 +81,16 @@ namespace ERP_API.App.Service
             if (Newproduct != null) throw new DuplicateException("هذا الاسم مستخدم بالفعل في منتج آخر");
             if (product.CostPrice > product.SellingPrice) throw new LogicException("سعر  البيع لا يمكن ان يكون اقل من سعر الكلفة");
             if (product.MinStockLevel < 0) throw new LogicException("اقل قيمه مخزونه لا يمن ان تكون في السالب");
+            if (product.WarehouseId.HasValue && product.WarehouseId.Value > 0)
+            {
+                bool warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == product.WarehouseId.Value && !w.IsRemoved);
+                if (!warehouseExists) throw new KeyNotFoundException("المخزن غير موجود");
+            }
             Newproduct = new Product();
             Newproduct = _mapper.Map<Product>(product);
+            Newproduct.WarehouseId = product.WarehouseId.HasValue && product.WarehouseId.Value > 0
+                ? product.WarehouseId.Value
+                : null;
             // Opening stock must go through stock transactions for audit trail
             Newproduct.CurrentStock = 0;
             Newproduct.CreateDate = DateTime.UtcNow.AddHours(3);
@@ -115,6 +126,8 @@ namespace ERP_API.App.Service
                     CurrentStock = x.CurrentStock,
                     MinStockLevel = x.MinStockLevel,
                     CategoriesId = x.CategoriesId,
+                    WarehouseId = x.WarehouseId,
+                    WarehouseName = x.Warehouse != null ? x.Warehouse.Name : null,
                 }).ToListAsync();
             return products;
         }
@@ -132,6 +145,8 @@ namespace ERP_API.App.Service
                     CurrentStock=x.CurrentStock,
                     MinStockLevel=x.MinStockLevel,
                     CategoriesId=x.CategoriesId,
+                    WarehouseId = x.WarehouseId,
+                    WarehouseName = x.Warehouse != null ? x.Warehouse.Name : null,
                 }).FirstOrDefaultAsync();
             if (product == null) throw new KeyNotFoundException("المنتج غير موجود");
             return product;
@@ -163,6 +178,23 @@ namespace ERP_API.App.Service
                 Product? Name = await GetProductByName(product.Name);
                 if (Name != null) throw new DuplicateException("هذا الاسم مستخدم في منتج اخر");
                 UpdateProduct.Name = product.Name;
+            }
+
+            if (product.WarehouseId.HasValue)
+            {
+                if (product.WarehouseId.Value > 0)
+                {
+                    if (product.WarehouseId.Value != UpdateProduct.WarehouseId)
+                    {
+                        bool warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == product.WarehouseId.Value && !w.IsRemoved);
+                        if (!warehouseExists) throw new KeyNotFoundException("المخزن غير موجود");
+                        UpdateProduct.WarehouseId = product.WarehouseId.Value;
+                    }
+                }
+                else
+                {
+                    UpdateProduct.WarehouseId = null;
+                }
             }
 
             if (product.CostPrice.HasValue && product.CostPrice.Value < 0)

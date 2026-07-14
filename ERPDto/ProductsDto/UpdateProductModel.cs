@@ -19,5 +19,6 @@ namespace ERPDto.ProductsDto
         public string Barcode { get; set; } = string.Empty;
         [Range(1, int.MaxValue)]
         public int CategoryId { get; set; }
+        public int? WarehouseId { get; set; }
     }
 }
