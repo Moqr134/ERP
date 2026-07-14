@@ -1,0 +1,721 @@
+@page "/sales/pos"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
+@using ERP_Clint.Service
+@using ERP_Clint.Service.SalesService
+@using ERPDto.ProductsDto
+@using ERPDto.SalesDto
+@attribute [Authorize(Roles = "FullAccess,CompleteSale")]
+@inject ISalesService SalesService
+@inject IJSRuntime Js
+
+<PageTitle>نقطة البيع</PageTitle>
+
+<div class="pos">
+    <div class="pos__workspace">
+        <div class="pos__scan">
+            <label class="pos__label" for="barcodeInput">باركود / بحث منتج</label>
+            <div class="pos__scan-row">
+                <input id="barcodeInput"
+                       class="pos__input"
+                       @bind="scanInput"
+                       @bind:event="oninput"
+                       @onkeydown="OnScanKeyDown"
+                       placeholder="امسح الباركود أو اكتب اسم المنتج..."
+                       autocomplete="off"
+                       autofocus />
+                <button type="button" class="btn-primary pos__add-btn" @onclick="HandleScanOrSearch" disabled="@isBusy">إضافة</button>
+            </div>
+            @if (!string.IsNullOrEmpty(scanError))
+            {
+                <div class="pos__hint pos__hint--error">@scanError</div>
+            }
+            else if (isSearching)
+            {
+                <div class="pos__hint">جاري البحث...</div>
+            }
+
+            @if (searchResults.Count > 0)
+            {
+                <div class="pos__results">
+                    @foreach (var p in searchResults)
+                    {
+                        <button type="button" class="pos__result" @onclick="() => AddProduct(p)">
+                            <div class="pos__result-main">
+                                <strong>@p.Name</strong>
+                                <span class="mono">@p.Barcode</span>
+                            </div>
+                            <div class="pos__result-meta">
+                                <span>@p.SellingPrice.ToString("N0")</span>
+                                <span class="@(p.CurrentStock <= 0 ? "stock-out" : p.CurrentStock <= p.MinStockLevel ? "stock-low" : "")">
+                                    مخزون: @p.CurrentStock
+                                </span>
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="pos__cart-panel">
+            <div class="pos__cart-header">
+                <h2>سلة البيع</h2>
+                <button type="button" class="btn-secondary" @onclick="ClearCart" disabled="@(cart.Count == 0 || isBusy)">تفريغ</button>
+            </div>
+
+            @if (cart.Count == 0)
+            {
+                <div class="pos__empty">لا توجد أصناف في السلة — امسح باركود أو ابحث عن منتج</div>
+            }
+            else
+            {
+                <div class="pos__cart-table-wrap">
+                    <table class="pos__cart-table">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th style="width:110px">السعر</th>
+                                <th style="width:130px">الكمية</th>
+                                <th style="width:110px">الإجمالي</th>
+                                <th style="width:48px"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in cart)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="pos__line-name">@line.Name</div>
+                                        <div class="mono pos__line-code">@line.Barcode</div>
+                                        <div class="pos__line-stock">متاح: @line.AvailableStock</div>
+                                    </td>
+                                    <td class="mono">@line.UnitPrice.ToString("N0")</td>
+                                    <td>
+                                        <div class="pos__qty">
+                                            <button type="button" @onclick="() => ChangeQty(line, -1)" disabled="@isBusy">−</button>
+                                            <input type="number" min="1" max="@line.AvailableStock" value="@line.Quantity"
+                                                   @onchange="e => SetQty(line, e)" disabled="@isBusy" />
+                                            <button type="button" @onclick="() => ChangeQty(line, 1)" disabled="@isBusy">+</button>
+                                        </div>
+                                    </td>
+                                    <td class="mono">@line.LineTotal.ToString("N0")</td>
+                                    <td>
+                                        <button type="button" class="pos__remove" title="حذف" @onclick="() => RemoveLine(line)" disabled="@isBusy">✕</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <aside class="pos__checkout">
+        <h2>الدفع</h2>
+
+        <div class="pos__totals">
+            <div class="pos__row"><span>المجموع</span><strong class="mono">@SubTotal.ToString("N0")</strong></div>
+            <div class="pos__row pos__row--input">
+                <span>خصم</span>
+                <input type="number" min="0" step="1" class="pos__input pos__input--sm"
+                       @bind="discount" @bind:event="oninput" disabled="@isBusy" />
+            </div>
+            <div class="pos__row pos__row--total"><span>الصافي</span><strong class="mono">@Total.ToString("N0")</strong></div>
+        </div>
+
+        <div class="pos__pay-methods">
+            <button type="button" class="pos__pay-btn @(paymentMethod == "Cash" ? "active" : "")"
+                    @onclick='() => SetPayment("Cash")' disabled="@isBusy">نقدي</button>
+            <button type="button" class="pos__pay-btn @(paymentMethod == "Card" ? "active" : "")"
+                    @onclick='() => SetPayment("Card")' disabled="@isBusy">بطاقة</button>
+        </div>
+
+        @if (paymentMethod == "Cash")
+        {
+            <div class="pos__field">
+                <label>المبلغ المستلم</label>
+                <input type="number" min="0" step="1" class="pos__input"
+                       @bind="paidAmount" @bind:event="oninput" disabled="@isBusy" />
+            </div>
+            <div class="pos__row"><span>الباقي</span><strong class="mono">@ChangeAmount.ToString("N0")</strong></div>
+        }
+
+        <div class="pos__field">
+            <label>ملاحظات</label>
+            <input class="pos__input" @bind="notes" maxlength="250" disabled="@isBusy" placeholder="اختياري" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(checkoutError))
+        {
+            <div class="pos__hint pos__hint--error">@checkoutError</div>
+        }
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="pos__hint pos__hint--ok">@successMessage</div>
+        }
+
+        <button type="button" class="btn-primary pos__checkout-btn" @onclick="Checkout" disabled="@(cart.Count == 0 || isBusy)">
+            @(isBusy ? "جاري الإتمام..." : "إتمام البيع")
+        </button>
+
+        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetSales)">
+            <Authorized>
+                <a class="pos__history-link" href="sales/history">سجل المبيعات ←</a>
+            </Authorized>
+        </AuthorizeView>
+    </aside>
+</div>
+
+@if (lastSale is not null)
+{
+    <div class="pos-receipt-overlay" @onclick="DismissReceipt">
+        <div class="pos-receipt" @onclick:stopPropagation="true">
+            <h3>تم البيع بنجاح</h3>
+            <div class="mono pos-receipt__inv">@lastSale.InvoiceNumber</div>
+            <div class="pos-receipt__row"><span>الإجمالي</span><strong>@lastSale.Total.ToString("N0")</strong></div>
+            <div class="pos-receipt__row"><span>المدفوع</span><strong>@lastSale.PaidAmount.ToString("N0")</strong></div>
+            <div class="pos-receipt__row"><span>الباقي</span><strong>@lastSale.ChangeAmount.ToString("N0")</strong></div>
+            <div class="pos-receipt__actions">
+                <button type="button" class="btn-primary" @onclick="DismissReceipt">بيع جديد</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .pos {
+        display: grid;
+        grid-template-columns: 1fr minmax(280px, 340px);
+        gap: 18px;
+        min-height: calc(100vh - 120px);
+        align-items: stretch;
+    }
+
+    .pos__workspace {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .pos__scan, .pos__cart-panel, .pos__checkout {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        padding: 16px;
+    }
+
+    .pos__label, .pos__field label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(255,255,255,0.5);
+        margin-bottom: 8px;
+    }
+
+    .pos__scan-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    .pos__input {
+        flex: 1;
+        width: 100%;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+        color: #fff;
+        padding: 12px 14px;
+        font-family: 'Cairo', sans-serif;
+        font-size: 15px;
+        outline: none;
+    }
+
+    .pos__input:focus {
+        border-color: rgba(249,115,22,0.55);
+        box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+    }
+
+    .pos__input--sm {
+        max-width: 120px;
+        text-align: left;
+        padding: 8px 10px;
+        direction: ltr;
+    }
+
+    .pos__add-btn { white-space: nowrap; }
+
+    .pos__hint {
+        margin-top: 10px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.45);
+    }
+    .pos__hint--error { color: #ff6b6b; }
+    .pos__hint--ok { color: #4ade80; }
+
+    .pos__results {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 220px;
+        overflow: auto;
+    }
+
+    .pos__result {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        text-align: right;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 10px;
+        padding: 10px 12px;
+        color: #fff;
+        cursor: pointer;
+        font-family: 'Cairo', sans-serif;
+        transition: border-color .15s, background .15s;
+    }
+    .pos__result:hover {
+        background: rgba(249,115,22,0.1);
+        border-color: rgba(249,115,22,0.35);
+    }
+
+    .pos__result-main { display: flex; flex-direction: column; gap: 2px; }
+    .pos__result-main span, .pos__line-code { font-size: 12px; color: rgba(255,255,255,0.45); }
+    .pos__result-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13px; font-weight: 700; }
+    .stock-low { color: #fbbf24; }
+    .stock-out { color: #f87171; }
+
+    .pos__cart-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    .pos__cart-header h2, .pos__checkout h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 800;
+        color: #fff;
+    }
+
+    .pos__empty {
+        padding: 40px 16px;
+        text-align: center;
+        color: rgba(255,255,255,0.4);
+        font-size: 14px;
+    }
+
+    .pos__cart-table-wrap { overflow: auto; max-height: min(55vh, 520px); }
+
+    .pos__cart-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    .pos__cart-table th {
+        text-align: right;
+        color: rgba(255,255,255,0.45);
+        font-size: 12px;
+        font-weight: 700;
+        padding: 8px 6px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .pos__cart-table td {
+        padding: 10px 6px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        vertical-align: middle;
+        color: rgba(255,255,255,0.85);
+    }
+
+    .pos__line-name { font-weight: 700; }
+    .pos__line-stock { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+    .pos__qty {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(0,0,0,0.25);
+        border-radius: 8px;
+        padding: 2px;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .pos__qty button {
+        width: 28px; height: 28px;
+        border: none; background: transparent;
+        color: #fff; cursor: pointer; font-size: 16px;
+        border-radius: 6px;
+    }
+    .pos__qty button:hover { background: rgba(255,255,255,0.08); }
+    .pos__qty input {
+        width: 42px; text-align: center;
+        background: transparent; border: none; color: #fff;
+        font-family: 'Cairo', sans-serif; font-weight: 700;
+        direction: ltr;
+    }
+
+    .pos__remove {
+        background: transparent; border: none; color: rgba(255,255,255,0.35);
+        cursor: pointer; font-size: 14px; padding: 6px;
+    }
+    .pos__remove:hover { color: #f87171; }
+
+    .pos__checkout {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        position: sticky;
+        top: 12px;
+        align-self: start;
+    }
+
+    .pos__totals { display: flex; flex-direction: column; gap: 10px; }
+    .pos__row {
+        display: flex; justify-content: space-between; align-items: center;
+        color: rgba(255,255,255,0.65); font-size: 14px;
+    }
+    .pos__row strong { color: #fff; }
+    .pos__row--total {
+        padding-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        font-size: 18px;
+    }
+    .pos__row--total strong { color: #fb923c; font-size: 22px; }
+
+    .pos__pay-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pos__pay-btn {
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.03);
+        color: rgba(255,255,255,0.7);
+        font-family: 'Cairo', sans-serif;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .pos__pay-btn.active {
+        background: rgba(249,115,22,0.18);
+        border-color: rgba(249,115,22,0.5);
+        color: #fff;
+    }
+
+    .pos__checkout-btn {
+        width: 100%;
+        padding: 14px;
+        font-size: 16px;
+        margin-top: 4px;
+    }
+
+    .pos__history-link {
+        text-align: center;
+        color: rgba(255,255,255,0.45);
+        font-size: 13px;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .pos__history-link:hover { color: #fb923c; }
+
+    .mono { font-variant-numeric: tabular-nums; direction: ltr; display: inline-block; }
+
+    .pos-receipt-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.65);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 50; padding: 20px;
+    }
+    .pos-receipt {
+        background: #141a22;
+        border: 1px solid rgba(249,115,22,0.35);
+        border-radius: 16px;
+        padding: 24px;
+        width: min(360px, 100%);
+        display: flex; flex-direction: column; gap: 12px;
+        animation: posPop .2s ease;
+    }
+    .pos-receipt h3 { margin: 0; color: #fff; text-align: center; }
+    .pos-receipt__inv { text-align: center; color: #fb923c; font-weight: 800; font-size: 18px; }
+    .pos-receipt__row { display: flex; justify-content: space-between; color: rgba(255,255,255,0.7); }
+    .pos-receipt__row strong { color: #fff; }
+    .pos-receipt__actions { margin-top: 8px; }
+    .pos-receipt__actions .btn-primary { width: 100%; }
+
+    @@keyframes posPop {
+        from { transform: scale(0.96); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    @@media (max-width: 960px) {
+        .pos { grid-template-columns: 1fr; }
+        .pos__checkout { position: static; }
+    }
+</style>
+
+@code {
+    private sealed class CartLine
+    {
+        public int ProductId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Barcode { get; set; }
+        public double UnitPrice { get; set; }
+        public int Quantity { get; set; }
+        public int AvailableStock { get; set; }
+        public double LineTotal => Math.Round(UnitPrice * Quantity, 2);
+    }
+
+    private readonly List<CartLine> cart = new();
+    private List<ProductDto> searchResults = new();
+    private string scanInput = string.Empty;
+    private string? scanError;
+    private string? checkoutError;
+    private string? successMessage;
+    private string paymentMethod = "Cash";
+    private double discount;
+    private double paidAmount;
+    private string? notes;
+    private bool isBusy;
+    private bool isSearching;
+    private SaleDto? lastSale;
+    private CancellationTokenSource? searchCts;
+
+    private double SubTotal => Math.Round(cart.Sum(c => c.LineTotal), 2);
+    private double Total => Math.Round(Math.Max(0, SubTotal - Math.Max(0, discount)), 2);
+    private double ChangeAmount => paymentMethod == "Cash"
+        ? Math.Round(Math.Max(0, paidAmount - Total), 2)
+        : 0;
+
+    private async Task OnScanKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await HandleScanOrSearch();
+    }
+
+    private async Task HandleScanOrSearch()
+    {
+        scanError = null;
+        successMessage = null;
+        var term = (scanInput ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(term))
+        {
+            searchResults = new();
+            return;
+        }
+
+        // Prefer exact barcode match first (scanner workflow)
+        try
+        {
+            isSearching = true;
+            var byBarcode = await SalesService.LookupProductByBarcodeAsync(term);
+            if (byBarcode is not null)
+            {
+                AddProduct(byBarcode);
+                scanInput = string.Empty;
+                searchResults = new();
+                return;
+            }
+        }
+        catch (ApiRequestException)
+        {
+            // fall through to name search
+        }
+        finally
+        {
+            isSearching = false;
+        }
+
+        await SearchProducts(term);
+    }
+
+    private async Task SearchProducts(string term)
+    {
+        searchCts?.Cancel();
+        searchCts = new CancellationTokenSource();
+        var token = searchCts.Token;
+
+        try
+        {
+            isSearching = true;
+            scanError = null;
+            var products = await SalesService.SearchProductsAsync(term);
+
+            if (token.IsCancellationRequested) return;
+
+            searchResults = products ?? new();
+            if (searchResults.Count == 0)
+                scanError = "لا توجد نتائج";
+        }
+        catch (Exception)
+        {
+            if (!token.IsCancellationRequested)
+                scanError = "تعذر البحث عن المنتجات";
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested)
+                isSearching = false;
+        }
+    }
+
+    private void AddProduct(ProductDto product)
+    {
+        scanError = null;
+        successMessage = null;
+        checkoutError = null;
+
+        if (product.CurrentStock <= 0)
+        {
+            scanError = $"المنتج «{product.Name}» غير متوفر في المخزون";
+            return;
+        }
+
+        var existing = cart.FirstOrDefault(c => c.ProductId == product.Id);
+        if (existing is not null)
+        {
+            if (existing.Quantity >= existing.AvailableStock)
+            {
+                scanError = "لا يمكن تجاوز الكمية المتوفرة";
+                return;
+            }
+            existing.Quantity += 1;
+        }
+        else
+        {
+            cart.Add(new CartLine
+            {
+                ProductId = product.Id,
+                Name = product.Name,
+                Barcode = product.Barcode,
+                UnitPrice = product.SellingPrice,
+                Quantity = 1,
+                AvailableStock = product.CurrentStock
+            });
+        }
+
+        searchResults = new();
+        scanInput = string.Empty;
+        if (paymentMethod == "Cash" && paidAmount < Total)
+            paidAmount = Total;
+    }
+
+    private void ChangeQty(CartLine line, int delta)
+    {
+        var next = line.Quantity + delta;
+        if (next < 1)
+        {
+            cart.Remove(line);
+            return;
+        }
+        if (next > line.AvailableStock)
+        {
+            scanError = "لا يمكن تجاوز الكمية المتوفرة";
+            return;
+        }
+        line.Quantity = next;
+        scanError = null;
+    }
+
+    private void SetQty(CartLine line, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var qty) || qty < 1)
+            qty = 1;
+        if (qty > line.AvailableStock)
+            qty = line.AvailableStock;
+        line.Quantity = qty;
+    }
+
+    private void RemoveLine(CartLine line) => cart.Remove(line);
+
+    private void ClearCart()
+    {
+        cart.Clear();
+        discount = 0;
+        paidAmount = 0;
+        notes = null;
+        checkoutError = null;
+        successMessage = null;
+    }
+
+    private void SetPayment(string method)
+    {
+        paymentMethod = method;
+        if (method == "Card")
+            paidAmount = Total;
+        else if (paidAmount < Total)
+            paidAmount = Total;
+    }
+
+    private async Task Checkout()
+    {
+        checkoutError = null;
+        successMessage = null;
+
+        if (cart.Count == 0)
+        {
+            checkoutError = "السلة فارغة";
+            return;
+        }
+
+        if (discount < 0 || discount > SubTotal)
+        {
+            checkoutError = "قيمة الخصم غير صحيحة";
+            return;
+        }
+
+        if (paymentMethod == "Cash" && paidAmount < Total)
+        {
+            checkoutError = "المبلغ المستلم أقل من الصافي";
+            return;
+        }
+
+        isBusy = true;
+        try
+        {
+            var model = new CompleteSaleModel
+            {
+                Discount = discount,
+                PaidAmount = paymentMethod == "Cash" ? paidAmount : Total,
+                PaymentMethod = paymentMethod,
+                Notes = notes,
+                Lines = cart.Select(c => new CompleteSaleLineDto
+                {
+                    ProductId = c.ProductId,
+                    Quantity = c.Quantity,
+                    UnitPrice = c.UnitPrice
+                }).ToList()
+            };
+
+            var sale = await SalesService.CompleteSaleAsync(model);
+            lastSale = sale;
+            ClearCart();
+            successMessage = sale is null ? "تم البيع" : $"فاتورة {sale.InvoiceNumber}";
+        }
+        catch (ApiRequestException ex)
+        {
+            checkoutError = string.IsNullOrWhiteSpace(ex.Message) ? "تعذر إتمام البيع" : ex.Message;
+        }
+        catch (Exception)
+        {
+            checkoutError = "تعذر إتمام البيع، حاول مرة أخرى";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task DismissReceipt()
+    {
+        lastSale = null;
+        try
+        {
+            await Js.InvokeVoidAsync("eval", "document.getElementById('barcodeInput')?.focus()");
+        }
+        catch
+        {
+            // ignore focus errors
+        }
+    }
+}
