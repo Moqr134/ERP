@@ -1,5 +1,6 @@
 @using ERPDto.RolesDto
 @using ERPDto.UserDto
+@using ERP_Clint.Security
 
 <div class="modal-overlay @(IsOpen ? "open" : "")">
     <div class="modal-box modal-box--wide">
@@ -22,17 +23,34 @@
                 <button class="btn-secondary" type="button" @onclick="SelectAll">تحديد الكل</button>
                 <button class="btn-secondary" type="button" @onclick="ClearAll">إلغاء الكل</button>
             </div>
-            <div class="perm-list">
-                @foreach (var permission in allPermissions)
-                {
-                    <label class="perm-check">
-                        <input type="checkbox"
-                               checked="@selectedIds.Contains(permission.Id)"
-                               @onchange="e => Toggle(permission.Id, e)" />
-                        <span>@permission.Name</span>
-                    </label>
-                }
-            </div>
+
+            @foreach (var group in GroupedPermissions)
+            {
+                <div class="perm-group">
+                    <div class="perm-group__header">
+                        <strong>@group.Key</strong>
+                        <div class="perm-group__actions">
+                            <button type="button" class="link-btn" @onclick="() => SelectGroup(group)">تحديد</button>
+                            <button type="button" class="link-btn" @onclick="() => ClearGroup(group)">إلغاء</button>
+                        </div>
+                    </div>
+                    <div class="perm-list">
+                        @foreach (var permission in group)
+                        {
+                            <label class="perm-check">
+                                <input type="checkbox"
+                                       checked="@selectedIds.Contains(permission.Id)"
+                                       @onchange="e => Toggle(permission.Id, e)" />
+                                <span>
+                                    <span class="perm-label">@PermissionCatalog.GetDisplayName(permission.Name)</span>
+                                    <span class="perm-code">@permission.Name</span>
+                                </span>
+                            </label>
+                        }
+                    </div>
+                </div>
+            }
+
             <div class="modal-box__footer">
                 <button class="btn-secondary" @onclick="Close" disabled="@isSaving">إلغاء</button>
                 <button class="btn-primary" @onclick="HandleSave" disabled="@isSaving">
@@ -55,6 +73,9 @@
     private bool isLoading;
     private bool isSaving;
     private string? errorMessage;
+
+    private IEnumerable<IGrouping<string, PermissionDto>> GroupedPermissions =>
+        PermissionCatalog.GroupByModule(allPermissions, p => p.Name);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -89,6 +110,16 @@
 
     private void SelectAll() => selectedIds = allPermissions.Select(p => p.Id).ToHashSet();
     private void ClearAll() => selectedIds = new HashSet<int>();
+
+    private void SelectGroup(IGrouping<string, PermissionDto> group)
+    {
+        foreach (var p in group) selectedIds.Add(p.Id);
+    }
+
+    private void ClearGroup(IGrouping<string, PermissionDto> group)
+    {
+        foreach (var p in group) selectedIds.Remove(p.Id);
+    }
 
     private async Task HandleSave()
     {
@@ -125,9 +156,27 @@
 }
 
 <style>
-    .modal-box--wide { max-width:560px; max-height:85vh; overflow:auto; }
-    .perm-actions { display:flex; gap:8px; margin-bottom:12px; }
-    .perm-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
-    .perm-check { display:flex; align-items:center; gap:8px; padding:8px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; font-size:13px; cursor:pointer; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:110; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { width:100%; max-width:640px; background:#141a22; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px; color:#e8edf2; font-family:'Cairo',sans-serif; }
+    .modal-box--wide { max-width:640px; max-height:85vh; overflow:auto; }
+    .modal-box__header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .modal-box__header h3 { margin:0; font-size:16px; color:#fff; }
+    .modal-close { background:none; border:none; color:rgba(255,255,255,0.5); font-size:18px; cursor:pointer; }
+    .perm-actions { display:flex; gap:8px; margin-bottom:14px; }
+    .perm-group { margin-bottom:16px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; }
+    .perm-group__header { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:rgba(249,115,22,0.08); border-bottom:1px solid rgba(255,255,255,0.06); color:#fff; font-size:13px; }
+    .perm-group__actions { display:flex; gap:10px; }
+    .link-btn { background:none; border:none; color:#f97316; cursor:pointer; font-size:12px; font-family:'Cairo',sans-serif; }
+    .perm-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; }
+    .perm-check { display:flex; align-items:flex-start; gap:8px; padding:8px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; font-size:13px; cursor:pointer; }
+    .perm-label { display:block; color:#fff; font-weight:600; }
+    .perm-code { display:block; font-size:10px; color:rgba(255,255,255,0.35); margin-top:2px; }
+    .modal-box__footer { display:flex; gap:10px; }
+    .modal-box__footer button { flex:1; }
+    .btn-secondary { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e8edf2; padding:10px; border-radius:10px; cursor:pointer; }
+    .btn-primary { background:linear-gradient(135deg,#f97316,#c2410c); border:none; color:#fff; padding:10px; border-radius:10px; font-weight:700; cursor:pointer; }
+    .alert-error { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#f87171; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-size:13px; }
+    .state-box { padding:20px; text-align:center; color:rgba(255,255,255,0.45); }
     @@media (max-width:560px) { .perm-list { grid-template-columns:1fr; } }
 </style>

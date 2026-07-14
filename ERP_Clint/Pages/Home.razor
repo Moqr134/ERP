@@ -1,7 +1,9 @@
 ﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using ERP_Clint.Service.InventoryService
 @using ERPDto.ProductsDto
 @using ERP_Clint.Pages.Inventory.Stock
+@using ERP_Clint.Security
 @page "/"
 @layout MainLayout
 @attribute [Authorize]
@@ -48,18 +50,30 @@
         <div class="quick-links">
             <h3>اختصارات سريعة</h3>
             <div class="quick-links__grid">
-                <a class="quick-link" href="inventory/products">
-                    <span>🏷️</span>
-                    <span>إدارة المنتجات</span>
-                </a>
-                <a class="quick-link" href="inventory/categories">
-                    <span>🗂️</span>
-                    <span>إدارة الأصناف</span>
-                </a>
-                <button class="quick-link" @onclick="OpenStockModal" style="cursor:pointer;">
-                    <span>🔄</span>
-                    <span>حركة مخزون سريعة</span>
-                </button>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllProductsAsync)">
+                    <Authorized>
+                        <a class="quick-link" href="inventory/products">
+                            <span>🏷️</span>
+                            <span>إدارة المنتجات</span>
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllCategories)">
+                    <Authorized>
+                        <a class="quick-link" href="inventory/categories">
+                            <span>🗂️</span>
+                            <span>إدارة الأصناف</span>
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.AddStockTransaction)">
+                    <Authorized>
+                        <button class="quick-link" @onclick="OpenStockModal" style="cursor:pointer;">
+                            <span>🔄</span>
+                            <span>حركة مخزون سريعة</span>
+                        </button>
+                    </Authorized>
+                </AuthorizeView>
             </div>
         </div>
     }

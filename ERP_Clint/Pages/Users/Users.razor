@@ -1,8 +1,10 @@
 @page "/users"
 @layout MainLayout
-@attribute [Authorize]
+@attribute [Authorize(Roles = "FullAccess,GetUsers")]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using ERPDto.UserDto
+@using ERP_Clint.Security
 
 @if (!isLoading && loadError is null && usersInfo is not null)
 {
@@ -38,8 +40,16 @@
                 <span>🔍</span>
                 <input type="text" value="@searchTerm" @oninput="OnSearchChanged" placeholder="ابحث بالاسم أو البريد..." />
             </div>
-            <a class="btn-secondary" href="users/roles">الأدوار</a>
-            <button class="btn-primary" @onclick="OpenAddModal">+ إضافة مستخدم</button>
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllRoles)">
+                <Authorized>
+                    <a class="btn-secondary" href="users/roles">الأدوار</a>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CreateUser)">
+                <Authorized>
+                    <button class="btn-primary" @onclick="OpenAddModal">+ إضافة مستخدم</button>
+                </Authorized>
+            </AuthorizeView>
         </div>
     </div>
 
@@ -67,7 +77,11 @@
                     <th>الدور</th>
                     <th>الحالة</th>
                     <th>آخر دخول</th>
-                    <th>إجراءات</th>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.UpdateUser, PermissionNames.DeleteUser, PermissionNames.UpdateUserPermission, PermissionNames.ChangePassword, PermissionNames.SetUserActive)">
+                        <Authorized>
+                            <th>إجراءات</th>
+                        </Authorized>
+                    </AuthorizeView>
                 </tr>
             </thead>
             <tbody>
@@ -94,17 +108,41 @@
                             }
                         </td>
                         <td>@(user.LastLogin?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
-                        <td>
-                            <div class="row-actions">
-                                <button @onclick="() => OpenEditModal(user)" title="تعديل">✏️</button>
-                                <button @onclick="() => OpenPermissionsModal(user)" title="الصلاحيات">🔐</button>
-                                <button @onclick="() => OpenPasswordModal(user)" title="كلمة المرور">🔑</button>
-                                <button @onclick="() => ToggleActive(user)" title="@(user.IsActive ? "تعطيل" : "تفعيل")">
-                                    @(user.IsActive ? "🚫" : "✅")
-                                </button>
-                                <button class="danger" @onclick="() => OpenDeleteModal(user)" title="حذف">🗑️</button>
-                            </div>
-                        </td>
+                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.UpdateUser, PermissionNames.DeleteUser, PermissionNames.UpdateUserPermission, PermissionNames.ChangePassword, PermissionNames.SetUserActive)" Context="actionsCtx">
+                            <Authorized>
+                                <td>
+                                    <div class="row-actions">
+                                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.UpdateUser)" Context="editCtx">
+                                            <Authorized>
+                                                <button @onclick="() => OpenEditModal(user)" title="تعديل">✏️</button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetUserPermissions, PermissionNames.UpdateUserPermission)" Context="permCtx">
+                                            <Authorized>
+                                                <button @onclick="() => OpenPermissionsModal(user)" title="الصلاحيات">🔐</button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.ChangePassword)" Context="passCtx">
+                                            <Authorized>
+                                                <button @onclick="() => OpenPasswordModal(user)" title="كلمة المرور">🔑</button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.SetUserActive)" Context="activeCtx">
+                                            <Authorized>
+                                                <button @onclick="() => ToggleActive(user)" title="@(user.IsActive ? "تعطيل" : "تفعيل")">
+                                                    @(user.IsActive ? "🚫" : "✅")
+                                                </button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.DeleteUser)" Context="delCtx">
+                                            <Authorized>
+                                                <button class="danger" @onclick="() => OpenDeleteModal(user)" title="حذف">🗑️</button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    </div>
+                                </td>
+                            </Authorized>
+                        </AuthorizeView>
                     </tr>
                 }
             </tbody>

@@ -1,4 +1,5 @@
 @using ERPDto.UserDto
+@using ERP_Clint.Security
 
 <div class="modal-overlay @(IsOpen ? "open" : "")">
     <div class="modal-box modal-box--wide">
@@ -17,26 +18,36 @@
         }
         else
         {
-            <p class="hint">فعّل/عطّل الصلاحيات بشكل فردي. القيمة الفارغة تعني الاعتماد على الدور فقط.</p>
-            <div class="perm-list">
-                @foreach (var item in permissions)
-                {
-                    <div class="perm-row">
-                        <div>
-                            <div class="perm-name">@item.PermissionName</div>
-                            <div class="perm-meta">
-                                @(item.FromRole ? "من الدور" : "ليست من الدور")
-                                · فعّالة: @(item.IsEffective ? "نعم" : "لا")
-                            </div>
-                        </div>
-                        <select class="form-input form-input--sm" value="@OverrideValue(item)" @onchange="e => SetOverride(item, e)">
-                            <option value="">اعتماد الدور</option>
-                            <option value="true">سماح</option>
-                            <option value="false">منع</option>
-                        </select>
+            <p class="hint">رتّبت حسب الوحدات. "اعتماد الدور" يعني بدون استثناء فردي.</p>
+
+            @foreach (var group in GroupedPermissions)
+            {
+                <div class="perm-group">
+                    <div class="perm-group__header">
+                        <strong>@group.Key</strong>
                     </div>
-                }
-            </div>
+                    <div class="perm-list-stack">
+                        @foreach (var item in group)
+                        {
+                            <div class="perm-row">
+                                <div>
+                                    <div class="perm-name">@PermissionCatalog.GetDisplayName(item.PermissionName)</div>
+                                    <div class="perm-meta">
+                                        @item.PermissionName
+                                        · @(item.FromRole ? "من الدور" : "ليست من الدور")
+                                        · فعّالة: @(item.IsEffective ? "نعم" : "لا")
+                                    </div>
+                                </div>
+                                <select class="form-input form-input--sm" value="@OverrideValue(item)" @onchange="e => SetOverride(item, e)">
+                                    <option value="">اعتماد الدور</option>
+                                    <option value="true">سماح</option>
+                                    <option value="false">منع</option>
+                                </select>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
 
             <div class="modal-box__footer">
                 <button class="btn-secondary" @onclick="Close" disabled="@isSaving">إلغاء</button>
@@ -59,6 +70,9 @@
     private bool isLoading;
     private bool isSaving;
     private string? errorMessage;
+
+    private IEnumerable<IGrouping<string, UserPermissionViewDto>> GroupedPermissions =>
+        PermissionCatalog.GroupByModule(permissions, p => p.PermissionName);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -122,7 +136,6 @@
                 })
                 .ToList();
 
-            // Always send full replace set (including empty to clear overrides)
             var response = await UserService.UpdateUserPermissionsAsync(User.Id, payload);
             if (response.IsSuccessStatusCode)
                 await OnSaved.InvokeAsync();
@@ -147,11 +160,26 @@
 }
 
 <style>
-    .modal-box--wide { max-width:560px; max-height:85vh; overflow:auto; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:110; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { width:100%; max-width:640px; background:#141a22; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px; color:#e8edf2; font-family:'Cairo',sans-serif; }
+    .modal-box--wide { max-width:640px; max-height:85vh; overflow:auto; }
+    .modal-box__header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .modal-box__header h3 { margin:0; font-size:16px; color:#fff; }
+    .modal-close { background:none; border:none; color:rgba(255,255,255,0.5); font-size:18px; cursor:pointer; }
     .hint { font-size:12px; color:rgba(255,255,255,0.45); margin:0 0 14px; }
-    .perm-list { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+    .perm-group { margin-bottom:16px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; }
+    .perm-group__header { padding:10px 14px; background:rgba(249,115,22,0.08); border-bottom:1px solid rgba(255,255,255,0.06); color:#fff; font-size:13px; }
+    .perm-list-stack { display:flex; flex-direction:column; gap:8px; padding:12px; }
     .perm-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; }
     .perm-name { font-weight:700; color:#fff; font-size:13px; }
     .perm-meta { font-size:11px; color:rgba(255,255,255,0.4); }
+    .form-input { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; font-family:'Cairo',sans-serif; }
     .form-input--sm { width:140px; padding:8px 10px; }
+    .modal-box__footer { display:flex; gap:10px; }
+    .modal-box__footer button { flex:1; }
+    .btn-secondary { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e8edf2; padding:10px; border-radius:10px; cursor:pointer; }
+    .btn-primary { background:linear-gradient(135deg,#f97316,#c2410c); border:none; color:#fff; padding:10px; border-radius:10px; font-weight:700; cursor:pointer; }
+    .alert-error { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#f87171; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-size:13px; }
+    .state-box { padding:20px; text-align:center; color:rgba(255,255,255,0.45); }
 </style>
