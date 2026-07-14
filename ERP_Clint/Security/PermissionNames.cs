@@ -56,4 +56,11 @@ public static class PermissionNames
     public const string CompleteSale = "CompleteSale";
     public const string GetSales = "GetSales";
     public const string GetSaleById = "GetSaleById";
+
+    public const string GetReportsOverview = "GetReportsOverview";
+    public const string GetProductsReport = "GetProductsReport";
+    public const string GetCategoriesReport = "GetCategoriesReport";
+    public const string GetUsersReport = "GetUsersReport";
+    public const string GetSalesReport = "GetSalesReport";
+    public const string GetStockReport = "GetStockReport";
 }

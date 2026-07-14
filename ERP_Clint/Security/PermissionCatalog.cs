@@ -86,6 +86,16 @@ public static class PermissionCatalog
             new(PermissionNames.GetSales, "عرض فواتير المبيعات"),
             new(PermissionNames.GetSaleById, "عرض تفاصيل فاتورة"),
         ]),
+
+        new("reports", "التقارير",
+        [
+            new(PermissionNames.GetReportsOverview, "التقرير الشامل"),
+            new(PermissionNames.GetProductsReport, "تقرير المنتجات"),
+            new(PermissionNames.GetCategoriesReport, "تقرير الأصناف"),
+            new(PermissionNames.GetUsersReport, "تقرير المستخدمين"),
+            new(PermissionNames.GetSalesReport, "تقرير المبيعات"),
+            new(PermissionNames.GetStockReport, "تقرير حركات المخزون"),
+        ]),
     ];
 
     private static readonly Dictionary<string, string> DisplayNames =

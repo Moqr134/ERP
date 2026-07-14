@@ -1,0 +1,233 @@
+@page "/reports"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
+@using ERP_Clint.Service
+@using ERP_Clint.Service.ReportsService
+@using ERPDto.ReportsDto
+@attribute [Authorize(Roles = "FullAccess,GetReportsOverview,GetProductsReport,GetCategoriesReport,GetUsersReport,GetSalesReport,GetStockReport")]
+@inject IReportsService ReportsService
+
+<PageTitle>التقارير</PageTitle>
+
+<div class="page-hero page-hero--reports">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">مركز التحليلات</p>
+        <h1>التقارير الشاملة</h1>
+        <p>نظرة موحدة على المبيعات، المخزون، المنتجات، الأصناف، والمستخدمين</p>
+    </div>
+</div>
+
+<div class="report-nav">
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview)">
+        <Authorized>
+            <a class="report-nav__item active" href="reports">الشامل</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetSalesReport)">
+        <Authorized>
+            <a class="report-nav__item" href="reports/sales">المبيعات</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetProductsReport)">
+        <Authorized>
+            <a class="report-nav__item" href="reports/products">المنتجات</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetCategoriesReport)">
+        <Authorized>
+            <a class="report-nav__item" href="reports/categories">الأصناف</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetUsersReport)">
+        <Authorized>
+            <a class="report-nav__item" href="reports/users">المستخدمون</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetStockReport)">
+        <Authorized>
+            <a class="report-nav__item" href="reports/stock">المخزون</a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview)">
+    <Authorized>
+        <ReportFilters FromDate="fromDate" FromDateChanged="v => fromDate = v"
+                       ToDate="toDate" ToDateChanged="v => toDate = v"
+                       OnApply="Load" IsBusy="isLoading" />
+
+        @if (isLoading)
+        {
+            <div class="state-box">جاري تحميل التقرير الشامل...</div>
+        }
+        else if (!string.IsNullOrEmpty(loadError))
+        {
+            <div class="state-box state-box--error">
+                ⚠ @loadError
+                <button class="btn-secondary" @onclick="() => Load()">إعادة المحاولة</button>
+            </div>
+        }
+        else if (report is not null)
+        {
+            <div class="kpi-grid kpi-grid--animate">
+                <div class="kpi-card kpi-card--lift kpi-card--sales">
+                    <div class="kpi-card__icon">💰</div>
+                    <div class="kpi-card__value">@report.RevenueToday.ToString("N0")</div>
+                    <div class="kpi-card__label">إيراد اليوم (@report.SalesToday فاتورة)</div>
+                </div>
+                <div class="kpi-card kpi-card--lift kpi-card--total">
+                    <div class="kpi-card__icon">🧾</div>
+                    <div class="kpi-card__value">@report.SalesRevenue.ToString("N0")</div>
+                    <div class="kpi-card__label">إجمالي المبيعات (@report.TotalSales)</div>
+                </div>
+                <div class="kpi-card kpi-card--lift kpi-card--value">
+                    <div class="kpi-card__icon">📦</div>
+                    <div class="kpi-card__value">@report.InventoryCostValue.ToString("N0")</div>
+                    <div class="kpi-card__label">قيمة المخزون بالتكلفة</div>
+                </div>
+                <div class="kpi-card kpi-card--lift kpi-card--low">
+                    <div class="kpi-card__icon">⚠️</div>
+                    <div class="kpi-card__value">@report.LowStockProducts</div>
+                    <div class="kpi-card__label">منخفض المخزون / نافذ: @report.OutOfStockProducts</div>
+                </div>
+            </div>
+
+            <div class="kpi-grid" style="margin-top:14px">
+                <div class="kpi-card">
+                    <div class="kpi-card__icon">🏷️</div>
+                    <div class="kpi-card__value">@report.TotalProducts</div>
+                    <div class="kpi-card__label">منتجات</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-card__icon">🗂️</div>
+                    <div class="kpi-card__value">@report.TotalCategories</div>
+                    <div class="kpi-card__label">أصناف</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-card__icon">👥</div>
+                    <div class="kpi-card__value">@report.ActiveUsers / @report.TotalUsers</div>
+                    <div class="kpi-card__label">مستخدمون نشطون</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-card__icon">🚚</div>
+                    <div class="kpi-card__value">@report.TotalSuppliers</div>
+                    <div class="kpi-card__label">موردون</div>
+                </div>
+            </div>
+
+            <div class="report-grid">
+                <section class="report-panel">
+                    <div class="report-panel__header">
+                        <h3>المبيعات آخر 7 أيام</h3>
+                    </div>
+                    <TrendChart Items="report.SalesLast7Days" />
+                </section>
+                <section class="report-panel">
+                    <div class="report-panel__header">
+                        <h3>أفضل المنتجات مبيعاً</h3>
+                    </div>
+                    <BarChart Items="report.TopSellingProducts" UseCount="true" Tone="orange" />
+                </section>
+                <section class="report-panel">
+                    <div class="report-panel__header">
+                        <h3>الأصناف حسب عدد المنتجات</h3>
+                    </div>
+                    <BarChart Items="report.TopCategoriesByProducts" UseCount="true" Tone="teal" />
+                </section>
+                <section class="report-panel">
+                    <div class="report-panel__header">
+                        <h3>حركات المخزون</h3>
+                    </div>
+                    <div class="split-stats">
+                        <div>
+                            <span class="split-stats__label">دخول</span>
+                            <strong>@report.StockInCount</strong>
+                        </div>
+                        <div>
+                            <span class="split-stats__label">خروج</span>
+                            <strong>@report.StockOutCount</strong>
+                        </div>
+                        <div>
+                            <span class="split-stats__label">خصومات الفترة</span>
+                            <strong>@report.SalesDiscount.ToString("N0")</strong>
+                        </div>
+                        <div>
+                            <span class="split-stats__label">قيمة البيع المحتملة</span>
+                            <strong>@report.InventorySellValue.ToString("N0")</strong>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div class="report-hub-cards">
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetSalesReport)" Context="s">
+                <Authorized>
+                    <a class="hub-card" href="reports/sales"><span>💰</span><strong>تقرير المبيعات</strong><em>إيرادات، طرق دفع، أفضل المنتجات</em></a>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetProductsReport)" Context="p">
+                <Authorized>
+                    <a class="hub-card" href="reports/products"><span>🏷️</span><strong>تقرير المنتجات</strong><em>مخزون، قيم، نواقص</em></a>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetCategoriesReport)" Context="c">
+                <Authorized>
+                    <a class="hub-card" href="reports/categories"><span>🗂️</span><strong>تقرير الأصناف</strong><em>توزيع المنتجات والقيمة</em></a>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetUsersReport)" Context="u">
+                <Authorized>
+                    <a class="hub-card" href="reports/users"><span>👥</span><strong>تقرير المستخدمين</strong><em>النشاط وأداء الكاشير</em></a>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetStockReport)" Context="st">
+                <Authorized>
+                    <a class="hub-card" href="reports/stock"><span>🔄</span><strong>تقرير المخزون</strong><em>حركات الدخول والخروج</em></a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private DashboardOverviewReport? report;
+    private bool isLoading;
+    private string? loadError;
+    private DateTime? fromDate;
+    private DateTime? toDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load(ReportFilterDto? filter = null)
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            filter ??= new ReportFilterDto { FromDate = fromDate, ToDate = toDate, Top = 10 };
+            report = await ReportsService.GetOverviewAsync(filter);
+        }
+        catch (ApiRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden || ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            report = null;
+            loadError = null;
+        }
+        catch (Exception ex)
+        {
+            report = null;
+            loadError = ex is ApiRequestException apiEx ? apiEx.Message : "تعذر تحميل التقرير الشامل";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

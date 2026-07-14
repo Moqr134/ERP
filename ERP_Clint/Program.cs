@@ -20,6 +20,7 @@ builder.Services.AddScoped<IStockTransactionsService, StockTransactionsService>(
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 builder.Services.AddScoped<IRoleAdminService, RoleAdminService>();
+builder.Services.AddScoped<ERP_Clint.Service.ReportsService.IReportsService, ERP_Clint.Service.ReportsService.ReportsService>();
 builder.Services.AddScoped<CostumAuth>();
 builder.Services.AddScoped<AuthHttpMessageHandler>();
 

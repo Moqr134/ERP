@@ -6,6 +6,15 @@
 @using ERPDto.UserDto
 @using ERP_Clint.Security
 
+<div class="page-hero page-hero--users">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">الإدارة</p>
+        <h1>إدارة المستخدمين</h1>
+        <p>الحسابات، الأدوار، وحالة الاتصال في النظام</p>
+    </div>
+</div>
+
 @if (!isLoading && loadError is null && usersInfo is not null)
 {
     <div class="kpi-grid">

@@ -137,6 +137,81 @@
         </Authorized>
     </AuthorizeView>
 
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview, PermissionNames.GetProductsReport, PermissionNames.GetCategoriesReport, PermissionNames.GetUsersReport, PermissionNames.GetSalesReport, PermissionNames.GetStockReport)">
+        <Authorized>
+            <li class="nav-menu__item">
+                <button type="button" class="nav-menu__link nav-menu__toggle @(isReportsOpen ? "open" : "")" @onclick="ToggleReports">
+                    <span class="nav-icon">📊</span>
+                    <span>التقارير</span>
+                    <span class="nav-arrow">›</span>
+                </button>
+
+                <ul class="nav-submenu @(isReportsOpen ? "open" : "")">
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview)" Context="ovCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="reports">
+                                    <span class="nav-icon">📈</span>
+                                    <span>التقرير الشامل</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetSalesReport)" Context="srCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="reports/sales">
+                                    <span class="nav-icon">💰</span>
+                                    <span>تقرير المبيعات</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetProductsReport)" Context="prCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="reports/products">
+                                    <span class="nav-icon">🏷️</span>
+                                    <span>تقرير المنتجات</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetCategoriesReport)" Context="crCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="reports/categories">
+                                    <span class="nav-icon">🗂️</span>
+                                    <span>تقرير الأصناف</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetUsersReport)" Context="urCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="reports/users">
+                                    <span class="nav-icon">👥</span>
+                                    <span>تقرير المستخدمين</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetStockReport)" Context="strCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="reports/stock">
+                                    <span class="nav-icon">🔄</span>
+                                    <span>تقرير المخزون</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                </ul>
+            </li>
+        </Authorized>
+    </AuthorizeView>
+
     <li class="nav-menu__item">
         <span class="nav-menu__link nav-menu__link--soon">
             <span class="nav-icon">🧾</span>
@@ -256,7 +331,7 @@
     }
 
         .nav-submenu.open {
-            max-height: 320px;
+            max-height: 480px;
         }
 
     .nav-submenu__link {
@@ -296,6 +371,7 @@
     private bool isInventoryOpen;
     private bool isUsersOpen;
     private bool isSalesOpen;
+    private bool isReportsOpen;
 
     protected override void OnInitialized()
     {
@@ -312,6 +388,10 @@
         {
             isSalesOpen = true;
         }
+        if (currentPath.Contains("/reports", StringComparison.OrdinalIgnoreCase))
+        {
+            isReportsOpen = true;
+        }
     }
 
     private void ToggleInventory()
@@ -327,5 +407,10 @@
     private void ToggleSales()
     {
         isSalesOpen = !isSalesOpen;
+    }
+
+    private void ToggleReports()
+    {
+        isReportsOpen = !isReportsOpen;
     }
 }
