@@ -21,11 +21,11 @@
                 <input placeholder="ابحث برقم الفاتورة أو الملاحظات..." @bind="search" @bind:event="oninput"
                        @onkeydown="OnSearchKey" />
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div class="header-actions__btns">
                 <button class="btn-secondary" @onclick="Search">بحث</button>
                 <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompleteSale)">
                     <Authorized>
-                        <a class="btn-primary" href="sales/pos" style="text-decoration:none; display:inline-flex; align-items:center;">نقطة البيع</a>
+                        <a class="btn-primary" href="sales/pos">نقطة البيع</a>
                     </Authorized>
                 </AuthorizeView>
                 <button class="btn-secondary" @onclick="Reload">تحديث</button>
@@ -144,6 +144,143 @@
 }
 
 <style>
+    .table-panel {
+        background: #141a22;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .table-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .table-panel__header h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .header-actions__btns {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .search-box input {
+        background: none;
+        border: none;
+        outline: none;
+        color: #fff;
+        font-family: 'Cairo', sans-serif;
+        width: min(280px, 55vw);
+    }
+
+    .table-panel > table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-panel thead th {
+        background: rgba(255,255,255,0.03);
+        color: rgba(255,255,255,0.6);
+        font-size: 12px;
+        text-transform: uppercase;
+        padding: 12px 16px;
+        text-align: right;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .table-panel tbody td {
+        padding: 12px 16px;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        color: #e8edf2;
+        vertical-align: middle;
+    }
+
+    .table-panel tbody tr:hover {
+        background: rgba(249,115,22,0.03);
+    }
+
+    .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-variant-numeric: tabular-nums;
+        direction: ltr;
+        display: inline-block;
+        color: rgba(255,255,255,0.75);
+    }
+
+    .btn-secondary {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: #e8edf2;
+        padding: 8px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-family: 'Cairo', sans-serif;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #f97316, #c2410c);
+        border: none;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-family: 'Cairo', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-primary:hover { filter: brightness(1.05); }
+
+    .state-box {
+        padding: 28px;
+        text-align: center;
+        color: rgba(255,255,255,0.45);
+    }
+
+    .state-box--error {
+        color: #f87171;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+
     .sales-pager {
         display: flex;
         align-items: center;
@@ -152,13 +289,23 @@
         padding: 16px;
         color: rgba(255,255,255,0.55);
         font-weight: 700;
+        border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .sales-pager button:disabled {
+        opacity: 0.4;
+        cursor: default;
     }
 
     .sale-modal-overlay {
-        position: fixed; inset: 0;
+        position: fixed;
+        inset: 0;
         background: rgba(0,0,0,0.65);
-        display: flex; align-items: center; justify-content: center;
-        z-index: 50; padding: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        padding: 20px;
     }
 
     .sale-modal {
@@ -169,6 +316,7 @@
         width: min(640px, 100%);
         max-height: 85vh;
         overflow: auto;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.45);
     }
 
     .sale-modal__header {
@@ -176,38 +324,88 @@
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 12px;
+        gap: 12px;
     }
-    .sale-modal__header h3 { margin: 0 0 4px; color: #fff; }
-    .sale-modal__inv { color: #fb923c; font-weight: 800; }
+
+    .sale-modal__header h3 {
+        margin: 0 0 4px;
+        color: #fff;
+        font-size: 16px;
+    }
+
+    .sale-modal__inv {
+        color: #fb923c;
+        font-weight: 800;
+    }
 
     .sale-modal__meta {
         display: flex;
         gap: 16px;
+        flex-wrap: wrap;
         color: rgba(255,255,255,0.5);
         font-size: 13px;
         margin-bottom: 14px;
     }
 
-    .sale-modal table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-    .sale-modal th, .sale-modal td {
+    .sale-modal table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 14px;
+    }
+
+    .sale-modal th,
+    .sale-modal td {
         text-align: right;
-        padding: 8px 6px;
+        padding: 10px 8px;
         border-bottom: 1px solid rgba(255,255,255,0.07);
         color: rgba(255,255,255,0.85);
         font-size: 13px;
     }
-    .sale-modal th { color: rgba(255,255,255,0.45); font-size: 12px; }
 
-    .sale-modal__totals { display: flex; flex-direction: column; gap: 8px; }
-    .sale-modal__totals > div {
-        display: flex; justify-content: space-between;
-        color: rgba(255,255,255,0.65); font-size: 14px;
+    .sale-modal th {
+        color: rgba(255,255,255,0.45);
+        font-size: 12px;
+        font-weight: 700;
     }
-    .sale-modal__totals strong { color: #fff; }
-    .sale-modal__total { padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 16px; }
-    .sale-modal__total strong { color: #fb923c; font-size: 18px; }
 
-    .mono { font-variant-numeric: tabular-nums; direction: ltr; display: inline-block; }
+    .sale-modal__totals {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+
+    .sale-modal__totals > div {
+        display: flex;
+        justify-content: space-between;
+        color: rgba(255,255,255,0.65);
+        font-size: 14px;
+    }
+
+    .sale-modal__totals strong { color: #fff; }
+
+    .sale-modal__total {
+        padding-top: 8px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        font-size: 16px;
+    }
+
+    .sale-modal__total strong {
+        color: #fb923c;
+        font-size: 18px;
+    }
+
+    @@media (max-width: 720px) {
+        .table-panel thead th:nth-child(4),
+        .table-panel tbody td:nth-child(4),
+        .table-panel thead th:nth-child(6),
+        .table-panel tbody td:nth-child(6) {
+            display: none;
+        }
+    }
 </style>
 
 @code {
