@@ -1,0 +1,157 @@
+@using ERPDto.UserDto
+
+<div class="modal-overlay @(IsOpen ? "open" : "")">
+    <div class="modal-box modal-box--wide">
+        <div class="modal-box__header">
+            <h3>صلاحيات المستخدم: @User?.Username</h3>
+            <button class="modal-close" @onclick="Close">✕</button>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="state-box">جاري تحميل الصلاحيات...</div>
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert-error">⚠ @errorMessage</div>
+        }
+        else
+        {
+            <p class="hint">فعّل/عطّل الصلاحيات بشكل فردي. القيمة الفارغة تعني الاعتماد على الدور فقط.</p>
+            <div class="perm-list">
+                @foreach (var item in permissions)
+                {
+                    <div class="perm-row">
+                        <div>
+                            <div class="perm-name">@item.PermissionName</div>
+                            <div class="perm-meta">
+                                @(item.FromRole ? "من الدور" : "ليست من الدور")
+                                · فعّالة: @(item.IsEffective ? "نعم" : "لا")
+                            </div>
+                        </div>
+                        <select class="form-input form-input--sm" value="@OverrideValue(item)" @onchange="e => SetOverride(item, e)">
+                            <option value="">اعتماد الدور</option>
+                            <option value="true">سماح</option>
+                            <option value="false">منع</option>
+                        </select>
+                    </div>
+                }
+            </div>
+
+            <div class="modal-box__footer">
+                <button class="btn-secondary" @onclick="Close" disabled="@isSaving">إلغاء</button>
+                <button class="btn-primary" @onclick="HandleSave" disabled="@isSaving">
+                    @(isSaving ? "جاري الحفظ..." : "حفظ")
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public UserDetailDto? User { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Inject] private ERP_Clint.Service.UserAdmin.IUserAdminService UserService { get; set; } = default!;
+
+    private List<UserPermissionViewDto> permissions = new();
+    private bool isLoading;
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!IsOpen || User is null) return;
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            permissions = await UserService.GetUserPermissionsAsync(User.Id);
+        }
+        catch
+        {
+            errorMessage = "تعذر تحميل صلاحيات المستخدم";
+            permissions = new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string OverrideValue(UserPermissionViewDto item)
+        => item.OverrideAllowed switch
+        {
+            true => "true",
+            false => "false",
+            _ => ""
+        };
+
+    private void SetOverride(UserPermissionViewDto item, ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        item.OverrideAllowed = value switch
+        {
+            "true" => true,
+            "false" => false,
+            _ => null
+        };
+        item.IsEffective = item.OverrideAllowed switch
+        {
+            true => true,
+            false => false,
+            null => item.FromRole
+        };
+    }
+
+    private async Task HandleSave()
+    {
+        if (User is null) return;
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            var payload = permissions
+                .Where(p => p.OverrideAllowed.HasValue)
+                .Select(p => new UserPermissionDto
+                {
+                    UserId = User.Id,
+                    PermissionId = p.PermissionId,
+                    IsAllowed = p.OverrideAllowed!.Value
+                })
+                .ToList();
+
+            // Always send full replace set (including empty to clear overrides)
+            var response = await UserService.UpdateUserPermissionsAsync(User.Id, payload);
+            if (response.IsSuccessStatusCode)
+                await OnSaved.InvokeAsync();
+            else
+                errorMessage = await ERP_Clint.Service.ApiErrorHelper.ReadMessageAsync(response, "فشل حفظ الصلاحيات");
+        }
+        catch
+        {
+            errorMessage = "تعذر الاتصال بالخادم";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        if (isSaving) return;
+        await OnClose.InvokeAsync();
+    }
+}
+
+<style>
+    .modal-box--wide { max-width:560px; max-height:85vh; overflow:auto; }
+    .hint { font-size:12px; color:rgba(255,255,255,0.45); margin:0 0 14px; }
+    .perm-list { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+    .perm-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; }
+    .perm-name { font-weight:700; color:#fff; font-size:13px; }
+    .perm-meta { font-size:11px; color:rgba(255,255,255,0.4); }
+    .form-input--sm { width:140px; padding:8px 10px; }
+</style>

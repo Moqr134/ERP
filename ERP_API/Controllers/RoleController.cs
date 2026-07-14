@@ -6,7 +6,6 @@ using Infrastructure.Cache;
 using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SecondApi.Controllers;
 
@@ -17,10 +16,12 @@ namespace ERP_API.Controllers
     public class RoleController : MasterController
     {
         private readonly IRoleService _roleService;
-        public RoleController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper,IRoleService roleService, Jwt jwtService) : base(userService, cache, context, mapper, jwtService)
+        public RoleController(IUserService userService, IAppMemoryCache cache, DBContext context, IMapper mapper, IRoleService roleService, Jwt jwtService)
+            : base(userService, cache, context, mapper, jwtService)
         {
             _roleService = roleService;
         }
+
         [HttpGet("GetAllRoles")]
         [Authorize(Roles = "FullAccess,GetAllRoles")]
         public async Task<IActionResult> GetAllRoles()
@@ -28,48 +29,68 @@ namespace ERP_API.Controllers
             List<RoleDto> roles = await _roleService.GetAllRoles();
             return Ok(roles);
         }
+
         [HttpGet("GetRoleById/{id}")]
         [Authorize(Roles = "FullAccess,GetRoleById")]
         public async Task<IActionResult> GetRoleById(int id)
         {
             Role? role = await _roleService.GetRoleById(id);
             if (role == null)
-            {
                 throw new KeyNotFoundException("لم يتم العثور على الدور بالمعرف المحدد.");
-            }
+
             RoleDto roleDto = _mapper.Map<RoleDto>(role);
             return Ok(roleDto);
         }
+
         [HttpPost("CreateRole")]
         [Authorize(Roles = "FullAccess,CreateRole")]
         public async Task<IActionResult> CreateRole([FromBody] RoleDto roleDto)
         {
             if (_UserId == 0) GetUserId();
             await _roleService.CreateRole(roleDto, _UserId);
-            return Ok();
+            return Ok("تم إنشاء الدور بنجاح");
         }
+
         [HttpPut("UpdateRole")]
         [Authorize(Roles = "FullAccess,UpdateRole")]
         public async Task<IActionResult> UpdateRole([FromBody] RoleDto roleDto)
         {
             if (_UserId == 0) GetUserId();
             await _roleService.UpdateRole(_UserId, roleDto);
-            return Ok();
+            return Ok("تم تعديل الدور بنجاح");
         }
+
         [HttpDelete("DeleteRole/{id}")]
         [Authorize(Roles = "FullAccess,DeleteRole")]
         public async Task<IActionResult> DeleteRole(int id)
         {
             if (_UserId == 0) GetUserId();
             await _roleService.DeleteRole(id, _UserId);
-            return Ok();
+            return Ok("تم حذف الدور بنجاح");
         }
+
+        [HttpGet("GetAllPermissions")]
+        [Authorize(Roles = "FullAccess,GetAllPermissions")]
+        public async Task<IActionResult> GetAllPermissions()
+        {
+            var permissions = await _roleService.GetAllPermissions();
+            return Ok(permissions);
+        }
+
+        [HttpGet("GetRolePermissions/{roleId}")]
+        [Authorize(Roles = "FullAccess,GetRolePermissions")]
+        public async Task<IActionResult> GetRolePermissions(int roleId)
+        {
+            var view = await _roleService.GetRolePermissions(roleId);
+            return Ok(view);
+        }
+
         [HttpPost("CreateRolePermission")]
         [Authorize(Roles = "FullAccess,CreateRolePermission")]
         public async Task<IActionResult> CreateRolePermission([FromBody] RolePermissionDto rolePermissionDto)
         {
             await _roleService.CreateRolePermission(rolePermissionDto.RoleId, rolePermissionDto.PermissionIds);
-            return Ok();
+            return Ok("تم تحديث صلاحيات الدور");
         }
     }
 }

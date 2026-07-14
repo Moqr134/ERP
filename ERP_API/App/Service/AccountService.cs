@@ -52,9 +52,7 @@ namespace ERP_API.App.Service
                 throw new UnauthorizedAccessException(invalidCredentialsMessage);
             }
 
-            var roleId = user.UserRoles.FirstOrDefault()?.RoleId
-                ?? throw new UnauthorizedAccessException("المستخدم غير مرتبط بأي دور");
-            var permisson = await _UserService.GetUserPermissions(user.Id, roleId);
+            var permisson = await _UserService.GetEffectivePermissions(user.Id);
             TokenResponseDto? token = await jwt.CreateTokenResponse(user, permisson);
             if (token == null)
             {
@@ -110,9 +108,7 @@ namespace ERP_API.App.Service
             {
                 throw new UnauthorizedAccessException("انتهت صلاحية جلسة الدخول");
             }
-            var roleId = users.UserRoles.FirstOrDefault()?.RoleId
-                ?? throw new UnauthorizedAccessException("المستخدم غير مرتبط بأي دور");
-            var permissions = await _UserService.GetUserPermissions(users.Id, roleId);
+            var permissions = await _UserService.GetEffectivePermissions(users.Id);
             TokenResponseDto? token = await jwt.RefreshTokensAsync(users, permissions);
             if (token == null)
             {

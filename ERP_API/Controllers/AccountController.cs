@@ -112,5 +112,14 @@ namespace ERP_API.Controllers
 
             return Ok(userInfo);
         }
+
+        [HttpPut("change-my-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangeMyPassword([FromBody] ChangeMyPasswordDto model)
+        {
+            if (_UserId == 0) GetUserId();
+            await _usersService.ChangeMyPassword(_UserId, model.CurrentPassword, model.NewPassword);
+            return Ok("تم تغيير كلمة المرور بنجاح");
+        }
     }
 }

@@ -1,0 +1,194 @@
+@page "/users/roles"
+@layout MainLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using ERPDto.RolesDto
+
+<div class="table-panel">
+    <div class="table-panel__header">
+        <h3>إدارة الأدوار</h3>
+        <div class="header-actions">
+            <div class="search-box">
+                <span>🔍</span>
+                <input type="text" @bind="searchTerm" @bind:event="oninput" placeholder="ابحث عن دور..." />
+            </div>
+            <a class="btn-secondary" href="users">المستخدمون</a>
+            <button class="btn-primary" @onclick="OpenAddModal">+ إضافة دور</button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="state-box">جاري تحميل الأدوار...</div>
+    }
+    else if (loadError is not null)
+    {
+        <div class="state-box state-box--error">
+            ⚠ @loadError
+            <button class="btn-secondary" @onclick="LoadRoles">إعادة المحاولة</button>
+        </div>
+    }
+    else if (FilteredRoles.Count == 0)
+    {
+        <div class="state-box">لا توجد أدوار مطابقة</div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>الدور</th>
+                    <th>الوصف</th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var role in FilteredRoles)
+                {
+                    <tr>
+                        <td><strong>@role.Name</strong></td>
+                        <td>@(string.IsNullOrWhiteSpace(role.Description) ? "—" : role.Description)</td>
+                        <td>
+                            <div class="row-actions">
+                                <button @onclick="() => OpenEditModal(role)" title="تعديل">✏️</button>
+                                <button @onclick="() => OpenPermissionsModal(role)" title="الصلاحيات">🔐</button>
+                                <button class="danger" @onclick="() => OpenDeleteModal(role)" title="حذف">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+<RoleModal IsOpen="isModalOpen"
+           EditingRole="roleBeingEdited"
+           OnSaved="HandleSaved"
+           OnClose="CloseModal" />
+
+<RolePermissionsModal IsOpen="isPermissionsOpen"
+                      Role="permissionsRole"
+                      OnClose="ClosePermissionsModal"
+                      OnSaved="HandlePermissionsSaved" />
+
+@if (isDeleteModalOpen)
+{
+    <div class="modal-overlay open">
+        <div class="modal-box modal-box--sm">
+            <p class="confirm-text">هل أنت متأكد من حذف الدور <strong>@roleBeingDeleted?.Name</strong>؟</p>
+            @if (!string.IsNullOrEmpty(actionError))
+            {
+                <div class="alert-error">⚠ @actionError</div>
+            }
+            <div class="modal-box__footer">
+                <button class="btn-secondary" @onclick="CloseDeleteModal">إلغاء</button>
+                <button class="btn-danger" @onclick="HandleDeleteConfirmed">حذف</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .table-panel { background:#141a22; border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden; }
+    .table-panel__header { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid rgba(255,255,255,0.08); flex-wrap:wrap; gap:12px; }
+    .table-panel__header h3 { font-size:15px; font-weight:700; color:#fff; margin:0; }
+    .header-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .search-box { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:8px 12px; }
+    .search-box input { background:none; border:none; outline:none; color:#fff; font-family:'Cairo',sans-serif; width:220px; }
+    table { width:100%; border-collapse:collapse; }
+    thead th { background:rgba(255,255,255,0.03); color:rgba(255,255,255,0.6); font-size:12px; padding:12px 16px; text-align:right; font-weight:700; border-bottom:1px solid rgba(255,255,255,0.08); }
+    tbody td { padding:12px 16px; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.04); color:#e8edf2; }
+    .row-actions { display:flex; gap:6px; }
+    .row-actions button { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer; padding:6px 8px; }
+    .row-actions button.danger { border-color:rgba(239,68,68,0.35); }
+    .btn-primary { background:linear-gradient(135deg,#f97316,#c2410c); border:none; color:#fff; padding:9px 14px; border-radius:10px; font-family:'Cairo',sans-serif; font-weight:700; cursor:pointer; text-decoration:none; }
+    .btn-secondary { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e8edf2; padding:9px 14px; border-radius:10px; font-family:'Cairo',sans-serif; cursor:pointer; text-decoration:none; }
+    .btn-danger { background:#dc2626; border:none; color:#fff; padding:9px 14px; border-radius:10px; cursor:pointer; }
+    .state-box { padding:28px; text-align:center; color:rgba(255,255,255,0.45); }
+    .state-box--error { color:#f87171; display:flex; flex-direction:column; gap:12px; align-items:center; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:100; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { width:100%; max-width:420px; background:#141a22; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px; color:#e8edf2; }
+    .modal-box--sm { max-width:360px; }
+    .confirm-text { text-align:center; line-height:1.7; }
+    .modal-box__footer { display:flex; gap:10px; margin-top:16px; }
+    .modal-box__footer button { flex:1; }
+    .alert-error { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#f87171; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-size:13px; }
+</style>
+
+@code {
+    [Inject] private ERP_Clint.Service.UserAdmin.IRoleAdminService RoleService { get; set; } = default!;
+
+    private List<RoleDto> roles = new();
+    private string searchTerm = string.Empty;
+    private bool isLoading = true;
+    private string? loadError;
+    private string? actionError;
+
+    private bool isModalOpen;
+    private RoleDto? roleBeingEdited;
+    private bool isPermissionsOpen;
+    private RoleDto? permissionsRole;
+    private bool isDeleteModalOpen;
+    private RoleDto? roleBeingDeleted;
+
+    private List<RoleDto> FilteredRoles =>
+        string.IsNullOrWhiteSpace(searchTerm)
+            ? roles
+            : roles.Where(r => (r.Name ?? string.Empty).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                            || (r.Description ?? string.Empty).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    protected override async Task OnInitializedAsync() => await LoadRoles();
+
+    private async Task LoadRoles()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            roles = await RoleService.GetAllRolesAsync();
+        }
+        catch
+        {
+            loadError = "تعذر تحميل الأدوار";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenAddModal() { roleBeingEdited = null; isModalOpen = true; }
+    private void OpenEditModal(RoleDto role) { roleBeingEdited = role; isModalOpen = true; }
+    private void CloseModal() { isModalOpen = false; roleBeingEdited = null; }
+    private async Task HandleSaved() { CloseModal(); await LoadRoles(); }
+
+    private void OpenPermissionsModal(RoleDto role) { permissionsRole = role; isPermissionsOpen = true; }
+    private void ClosePermissionsModal() { isPermissionsOpen = false; permissionsRole = null; }
+    private async Task HandlePermissionsSaved() { ClosePermissionsModal(); await LoadRoles(); }
+
+    private void OpenDeleteModal(RoleDto role) { roleBeingDeleted = role; actionError = null; isDeleteModalOpen = true; }
+    private void CloseDeleteModal() { isDeleteModalOpen = false; roleBeingDeleted = null; actionError = null; }
+
+    private async Task HandleDeleteConfirmed()
+    {
+        if (roleBeingDeleted is null) return;
+        actionError = null;
+        try
+        {
+            var response = await RoleService.DeleteRoleAsync(roleBeingDeleted.Id);
+            if (!response.IsSuccessStatusCode)
+            {
+                actionError = await ERP_Clint.Service.ApiErrorHelper.ReadMessageAsync(response, "تعذر حذف الدور");
+                return;
+            }
+            CloseDeleteModal();
+            await LoadRoles();
+        }
+        catch
+        {
+            actionError = "تعذر الاتصال بالخادم";
+        }
+    }
+}
