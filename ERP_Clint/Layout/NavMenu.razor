@@ -1,3 +1,6 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
+
 <ul class="nav-menu">
 
     <li class="nav-menu__item">
@@ -9,28 +12,40 @@
 
     <li class="nav-menu__section">العمليات</li>
 
-    <li class="nav-menu__item">
-        <button type="button" class="nav-menu__link nav-menu__toggle @(isUsersOpen ? "open" : "")" @onclick="ToggleUsers">
-            <span class="nav-icon">🤵</span>
-            <span>المستخدمون</span>
-            <span class="nav-arrow">›</span>
-        </button>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetUsers, PermissionNames.GetAllRoles, PermissionNames.CreateUser, PermissionNames.CreateRole)">
+        <Authorized>
+            <li class="nav-menu__item">
+                <button type="button" class="nav-menu__link nav-menu__toggle @(isUsersOpen ? "open" : "")" @onclick="ToggleUsers">
+                    <span class="nav-icon">🤵</span>
+                    <span>المستخدمون</span>
+                    <span class="nav-arrow">›</span>
+                </button>
 
-        <ul class="nav-submenu @(isUsersOpen ? "open" : "")">
-            <li>
-                <NavLink class="nav-submenu__link" href="users">
-                    <span class="nav-icon">👤</span>
-                    <span>قائمة المستخدمين</span>
-                </NavLink>
+                <ul class="nav-submenu @(isUsersOpen ? "open" : "")">
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetUsers)" Context="usersCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="users">
+                                    <span class="nav-icon">👤</span>
+                                    <span>قائمة المستخدمين</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllRoles)" Context="rolesCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="users/roles">
+                                    <span class="nav-icon">🛡️</span>
+                                    <span>الأدوار والصلاحيات</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                </ul>
             </li>
-            <li>
-                <NavLink class="nav-submenu__link" href="users/roles">
-                    <span class="nav-icon">🛡️</span>
-                    <span>الأدوار والصلاحيات</span>
-                </NavLink>
-            </li>
-        </ul>
-    </li>
+        </Authorized>
+    </AuthorizeView>
 
     <li class="nav-menu__item">
         <span class="nav-menu__link nav-menu__link--soon">
@@ -40,40 +55,60 @@
         </span>
     </li>
 
-    <li class="nav-menu__item">
-        <button type="button" class="nav-menu__link nav-menu__toggle @(isInventoryOpen ? "open" : "")" @onclick="ToggleInventory">
-            <span class="nav-icon">📦</span>
-            <span>المخزون</span>
-            <span class="nav-arrow">›</span>
-        </button>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllCategories, PermissionNames.GetAllProductsAsync, PermissionNames.GetAllSuppliers, PermissionNames.GetStockTransactions)">
+        <Authorized>
+            <li class="nav-menu__item">
+                <button type="button" class="nav-menu__link nav-menu__toggle @(isInventoryOpen ? "open" : "")" @onclick="ToggleInventory">
+                    <span class="nav-icon">📦</span>
+                    <span>المخزون</span>
+                    <span class="nav-arrow">›</span>
+                </button>
 
-        <ul class="nav-submenu @(isInventoryOpen ? "open" : "")">
-            <li>
-                <NavLink class="nav-submenu__link" href="inventory/categories">
-                    <span class="nav-icon">🗂️</span>
-                    <span>الأصناف</span>
-                </NavLink>
+                <ul class="nav-submenu @(isInventoryOpen ? "open" : "")">
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllCategories)" Context="catCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="inventory/categories">
+                                    <span class="nav-icon">🗂️</span>
+                                    <span>الأصناف</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllProductsAsync)" Context="prodCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="inventory/products">
+                                    <span class="nav-icon">🏷️</span>
+                                    <span>المنتجات</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllSuppliers)" Context="supCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="inventory/suppliers">
+                                    <span class="nav-icon">🚚</span>
+                                    <span>الموردون</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetStockTransactions)" Context="stockCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="inventory/stock-movements">
+                                    <span class="nav-icon">🔄</span>
+                                    <span>حركات المخزون</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                </ul>
             </li>
-            <li>
-                <NavLink class="nav-submenu__link" href="inventory/products">
-                    <span class="nav-icon">🏷️</span>
-                    <span>المنتجات</span>
-                </NavLink>
-            </li>
-            <li>
-                <NavLink class="nav-submenu__link" href="inventory/suppliers">
-                    <span class="nav-icon">🚚</span>
-                    <span>الموردون</span>
-                </NavLink>
-            </li>
-            <li>
-                <NavLink class="nav-submenu__link" href="inventory/stock-movements">
-                    <span class="nav-icon">🔄</span>
-                    <span>حركات المخزون</span>
-                </NavLink>
-            </li>
-        </ul>
-    </li>
+        </Authorized>
+    </AuthorizeView>
 
     <li class="nav-menu__item">
         <span class="nav-menu__link nav-menu__link--soon">
@@ -90,22 +125,6 @@
             <span class="soon-badge">قريباً</span>
         </span>
     </li>
-
-    @* <li class="nav-menu__section">التقارير والإعدادات</li>
-
-    <li class="nav-menu__item">
-        <NavLink class="nav-menu__link" href="reports">
-            <span class="nav-icon">📊</span>
-            <span>التقارير</span>
-        </NavLink>
-    </li>
-
-    <li class="nav-menu__item">
-        <NavLink class="nav-menu__link" href="settings">
-            <span class="nav-icon">⚙️</span>
-            <span>الإعدادات</span>
-        </NavLink>
-    </li> *@
 
 </ul> 
 
@@ -152,7 +171,6 @@
         text-align: center;
     }
 
-    /* حالة الرابط النشط - Blazor يضيف هذا الكلاس تلقائياً */
     .nav-menu__link.active {
         background: linear-gradient(135deg, rgba(249,115,22,0.18), rgba(194,65,12,0.12));
         color: #fff;
@@ -160,7 +178,6 @@
         box-shadow: inset 0 0 0 1px rgba(249,115,22,0.08);
     }
 
-    /* ===== زر القائمة القابلة للطي (Toggle) ===== */
     .nav-menu__toggle {
         width: 100%;
         background: none;
@@ -202,7 +219,6 @@
         font-weight: 700;
     }
 
-    /* ===== القائمة الفرعية ===== */
     .nav-submenu {
         list-style: none;
         margin: 0;

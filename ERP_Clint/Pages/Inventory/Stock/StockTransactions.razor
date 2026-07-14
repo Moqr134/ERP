@@ -1,7 +1,9 @@
 @page "/inventory/stock-movements"
 @layout MainLayout
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
+@attribute [Authorize(Roles = "FullAccess,GetStockTransactions")]
 @using ERPDto.StockTransactionDto
 @using ERP_Clint.Service.InventoryService
 @inject IStockTransactionsService StockTransactionsService
@@ -16,7 +18,11 @@
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <button class="btn-secondary" @onclick="() => { search = string.Empty; }">مسح البحث</button>
-                <button class="btn-primary" @onclick="OpenCreateModal">+ حركة جديدة</button>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.AddStockTransaction)">
+                    <Authorized>
+                        <button class="btn-primary" @onclick="OpenCreateModal">+ حركة جديدة</button>
+                    </Authorized>
+                </AuthorizeView>
                 <button class="btn-secondary" @onclick="Reload">تحديث</button>
             </div>
         </div>

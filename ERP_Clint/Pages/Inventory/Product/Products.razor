@@ -1,8 +1,10 @@
 @page "/inventory/products"
 @using ERP_Clint.Pages.Inventory.Category
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
 @layout MainLayout
-@attribute [Authorize]
+@attribute [Authorize(Roles = "FullAccess,GetAllProductsAsync")]
 
 @if (!isLoading && loadError is null && productsInfo is not null)
 {
@@ -47,7 +49,11 @@
                 <span>🔍</span>
                 <input type="text" value="@searchTerm" @oninput="OnSearchChanged" placeholder="ابحث بالاسم أو الكود..." />
             </div>
-            <button class="btn-primary" @onclick="OpenAddModal">+ إضافة منتج</button>
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CreateProduct)">
+                <Authorized>
+                    <button class="btn-primary" @onclick="OpenAddModal">+ إضافة منتج</button>
+                </Authorized>
+            </AuthorizeView>
         </div>
     </div>
  
@@ -75,7 +81,11 @@
                     <th>الكمية</th>
                     <th>السعر</th>
                     <th>الحالة</th>
-                    <th>إجراءات</th>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.UpdateProduct, PermissionNames.DeleteProduct)">
+                        <Authorized>
+                            <th>إجراءات</th>
+                        </Authorized>
+                    </AuthorizeView>
                 </tr>
             </thead>
             <tbody>
@@ -107,12 +117,24 @@
                                     break;
                             }
                         </td>
-                        <td>
-                            <div class="row-actions">
-                                <button @onclick="() => OpenEditModal(product)" title="تعديل">✏️</button>
-                                <button class="danger" @onclick="() => OpenDeleteModal(product)" title="حذف">🗑️</button>
-                            </div>
-                        </td>
+                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.UpdateProduct, PermissionNames.DeleteProduct)" Context="actionsCtx">
+                            <Authorized>
+                                <td>
+                                    <div class="row-actions">
+                                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.UpdateProduct)" Context="editCtx">
+                                            <Authorized>
+                                                <button @onclick="() => OpenEditModal(product)" title="تعديل">✏️</button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                        <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.DeleteProduct)" Context="delCtx">
+                                            <Authorized>
+                                                <button class="danger" @onclick="() => OpenDeleteModal(product)" title="حذف">🗑️</button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    </div>
+                                </td>
+                            </Authorized>
+                        </AuthorizeView>
                     </tr>
                 }
             </tbody>
