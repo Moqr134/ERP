@@ -3,6 +3,7 @@ using ERP_API.App.IService;
 using ERP_API.Domin.ProductEntity;
 using ERP_API.Domin.SalesEntity;
 using ERP_API.Domin.StockTransactionsEntity;
+using ERP_API.Infrastructure.Money;
 using ERP_API.Infrastructure.Services;
 using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
@@ -116,7 +117,7 @@ namespace ERP_API.App.Service
                     if (unitPrice < 0)
                         throw new InvalidOperationException("سعر البيع غير صحيح");
 
-                    var lineTotal = Math.Round(unitPrice * line.Quantity, 2);
+                    var lineTotal = Math.Round(unitPrice * line.Quantity, MidpointRounding.AwayFromZero);
                     subTotal += lineTotal;
 
                     product.CurrentStock -= line.Quantity;
@@ -146,13 +147,13 @@ namespace ERP_API.App.Service
                     });
                 }
 
-                subTotal = Math.Round(subTotal, 2);
-                var discount = Math.Round(model.Discount, 2);
+                subTotal = Math.Round(subTotal, MidpointRounding.AwayFromZero);
+                var discount = Math.Round(model.Discount, MidpointRounding.AwayFromZero);
                 if (discount > subTotal)
                     throw new InvalidOperationException("الخصم أكبر من مجموع الفاتورة");
 
-                var total = Math.Round(subTotal - discount, 2);
-                var paidAmount = Math.Round(model.PaidAmount, 2);
+                var total = Math.Round(subTotal - discount, MidpointRounding.AwayFromZero);
+                var paidAmount = Math.Round(model.PaidAmount, MidpointRounding.AwayFromZero);
 
                 if (paymentMethod == "Cash")
                 {
@@ -164,7 +165,7 @@ namespace ERP_API.App.Service
                     paidAmount = total;
                 }
 
-                var changeAmount = Math.Round(Math.Max(0, paidAmount - total), 2);
+                var changeAmount = IraqiCurrency.CalculateChange(total, paidAmount);
 
                 var sale = new Sale
                 {
