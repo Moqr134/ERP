@@ -5,6 +5,7 @@
 @using ERP_Clint.Security
 @using ERP_Clint.Service
 @using ERP_Clint.Service.SalesService
+@using ERP_Clint.Helpers
 @using ERPDto.ProductsDto
 @using ERPDto.SalesDto
 @attribute [Authorize(Roles = "FullAccess,CompleteSale")]
@@ -121,7 +122,7 @@
             <div class="pos__row pos__row--input">
                 <span>خصم</span>
                 <input type="number" min="0" step="1" class="pos__input pos__input--sm"
-                       @bind="discount" @bind:event="oninput" disabled="@isBusy" />
+                       @bind="discount" @bind:event="oninput" @bind:after="SyncPaidWithTotal" disabled="@isBusy" />
             </div>
             <div class="pos__row pos__row--total"><span>الصافي</span><strong class="mono">@Total.ToString("N0")</strong></div>
         </div>
@@ -136,11 +137,29 @@
         @if (paymentMethod == "Cash")
         {
             <div class="pos__field">
-                <label>المبلغ المستلم</label>
+                <label>المبلغ المستلم من الزبون</label>
+                <div class="pos__tenders">
+                    @foreach (var tender in CashSuggestions)
+                    {
+                        var changeForTender = IraqiCurrency.CalculateChange(Total, tender);
+                        <button type="button"
+                                class="pos__tender @(Math.Abs(paidAmount - tender) < 0.001 ? "active" : "")"
+                                @onclick="() => SetPaidAmount(tender)"
+                                disabled="@isBusy">
+                            <span class="pos__tender-paid mono">@tender.ToString("N0")</span>
+                            <span class="pos__tender-change">
+                                @(changeForTender <= 0 ? "بدون إرجاع" : $"إرجاع {changeForTender:N0}")
+                            </span>
+                        </button>
+                    }
+                </div>
                 <input type="number" min="0" step="1" class="pos__input"
                        @bind="paidAmount" @bind:event="oninput" disabled="@isBusy" />
             </div>
-            <div class="pos__row"><span>الباقي</span><strong class="mono">@ChangeAmount.ToString("N0")</strong></div>
+            <div class="pos__change @(ChangeAmount > 0 ? "pos__change--due" : "")">
+                <span>المبلغ اللازم للإرجاع</span>
+                <strong class="mono">@ChangeAmount.ToString("N0")</strong>
+            </div>
         }
 
         <div class="pos__field">
@@ -177,7 +196,7 @@
             <div class="mono pos-receipt__inv">@lastSale.InvoiceNumber</div>
             <div class="pos-receipt__row"><span>الإجمالي</span><strong>@lastSale.Total.ToString("N0")</strong></div>
             <div class="pos-receipt__row"><span>المدفوع</span><strong>@lastSale.PaidAmount.ToString("N0")</strong></div>
-            <div class="pos-receipt__row"><span>الباقي</span><strong>@lastSale.ChangeAmount.ToString("N0")</strong></div>
+            <div class="pos-receipt__row pos-receipt__row--change"><span>المبلغ اللازم للإرجاع</span><strong>@lastSale.ChangeAmount.ToString("N0")</strong></div>
             <div class="pos-receipt__actions">
                 <button type="button" class="btn-primary" @onclick="DismissReceipt">بيع جديد</button>
             </div>
@@ -386,6 +405,81 @@
     }
     .pos__row--total strong { color: #fb923c; font-size: 22px; }
 
+    .pos__tenders {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .pos__tender {
+        flex: 1 1 calc(50% - 8px);
+        min-width: 110px;
+        padding: 10px 8px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.03);
+        color: rgba(255,255,255,0.8);
+        font-family: 'Cairo', sans-serif;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: center;
+    }
+
+    .pos__tender:hover {
+        border-color: rgba(249,115,22,0.45);
+        background: rgba(249,115,22,0.1);
+        color: #fff;
+    }
+
+    .pos__tender.active {
+        background: rgba(249,115,22,0.22);
+        border-color: rgba(249,115,22,0.6);
+        color: #fff;
+        box-shadow: inset 0 0 0 1px rgba(249,115,22,0.2);
+    }
+
+    .pos__tender-paid {
+        font-weight: 800;
+        font-size: 15px;
+    }
+
+    .pos__tender-change {
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba(255,255,255,0.45);
+    }
+
+    .pos__tender.active .pos__tender-change { color: rgba(253,186,116,0.95); }
+
+    .pos__change {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: rgba(255,255,255,0.65);
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .pos__change strong {
+        color: #fff;
+        font-size: 20px;
+    }
+
+    .pos__change--due {
+        background: rgba(34,197,94,0.1);
+        border-color: rgba(34,197,94,0.35);
+        color: #86efac;
+    }
+
+    .pos__change--due strong { color: #4ade80; }
+
     .pos__pay-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .pos__pay-btn {
         padding: 12px;
@@ -440,6 +534,7 @@
     .pos-receipt__inv { text-align: center; color: #fb923c; font-weight: 800; font-size: 18px; }
     .pos-receipt__row { display: flex; justify-content: space-between; color: rgba(255,255,255,0.7); }
     .pos-receipt__row strong { color: #fff; }
+    .pos-receipt__row--change strong { color: #4ade80; font-size: 18px; }
     .pos-receipt__actions { margin-top: 8px; }
     .pos-receipt__actions .btn-primary { width: 100%; }
 
@@ -463,7 +558,7 @@
         public double UnitPrice { get; set; }
         public int Quantity { get; set; }
         public int AvailableStock { get; set; }
-        public double LineTotal => Math.Round(UnitPrice * Quantity, 2);
+        public double LineTotal => Math.Round(UnitPrice * Quantity, MidpointRounding.AwayFromZero);
     }
 
     private readonly List<CartLine> cart = new();
@@ -481,11 +576,32 @@
     private SaleDto? lastSale;
     private CancellationTokenSource? searchCts;
 
-    private double SubTotal => Math.Round(cart.Sum(c => c.LineTotal), 2);
-    private double Total => Math.Round(Math.Max(0, SubTotal - Math.Max(0, discount)), 2);
+    private double SubTotal => Math.Round(cart.Sum(c => c.LineTotal), MidpointRounding.AwayFromZero);
+    private double Total => Math.Round(Math.Max(0, SubTotal - Math.Max(0, discount)), MidpointRounding.AwayFromZero);
     private double ChangeAmount => paymentMethod == "Cash"
-        ? Math.Round(Math.Max(0, paidAmount - Total), 2)
+        ? IraqiCurrency.CalculateChange(Total, paidAmount)
         : 0;
+
+    private IReadOnlyList<double> CashSuggestions =>
+        Total <= 0 ? Array.Empty<double>() : IraqiCurrency.SuggestCashPayments(Total);
+
+    private void SyncPaidWithTotal()
+    {
+        if (paymentMethod == "Card")
+        {
+            paidAmount = Total;
+            return;
+        }
+
+        if (paidAmount < Total)
+            paidAmount = Total;
+    }
+
+    private void SetPaidAmount(double amount)
+    {
+        paidAmount = amount;
+        checkoutError = null;
+    }
 
     private async Task OnScanKeyDown(KeyboardEventArgs e)
     {
@@ -596,8 +712,7 @@
 
         searchResults = new();
         scanInput = string.Empty;
-        if (paymentMethod == "Cash" && paidAmount < Total)
-            paidAmount = Total;
+        SyncPaidWithTotal();
     }
 
     private void ChangeQty(CartLine line, int delta)
@@ -606,6 +721,7 @@
         if (next < 1)
         {
             cart.Remove(line);
+            SyncPaidWithTotal();
             return;
         }
         if (next > line.AvailableStock)
@@ -615,6 +731,7 @@
         }
         line.Quantity = next;
         scanError = null;
+        SyncPaidWithTotal();
     }
 
     private void SetQty(CartLine line, ChangeEventArgs e)
@@ -624,9 +741,14 @@
         if (qty > line.AvailableStock)
             qty = line.AvailableStock;
         line.Quantity = qty;
+        SyncPaidWithTotal();
     }
 
-    private void RemoveLine(CartLine line) => cart.Remove(line);
+    private void RemoveLine(CartLine line)
+    {
+        cart.Remove(line);
+        SyncPaidWithTotal();
+    }
 
     private void ClearCart()
     {
@@ -641,10 +763,7 @@
     private void SetPayment(string method)
     {
         paymentMethod = method;
-        if (method == "Card")
-            paidAmount = Total;
-        else if (paidAmount < Total)
-            paidAmount = Total;
+        SyncPaidWithTotal();
     }
 
     private async Task Checkout()

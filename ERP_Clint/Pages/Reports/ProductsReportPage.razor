@@ -1,0 +1,141 @@
+@page "/reports/products"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using ERP_Clint.Security
+@using ERP_Clint.Service
+@using ERP_Clint.Service.ReportsService
+@using ERPDto.ReportsDto
+@attribute [Authorize(Roles = "FullAccess,GetProductsReport")]
+@inject IReportsService ReportsService
+
+<PageTitle>تقرير المنتجات</PageTitle>
+
+<div class="page-hero page-hero--products">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">التقارير</p>
+        <h1>تقرير المنتجات</h1>
+        <p>حالة المخزون، القيمة، والنواقص حسب الأصناف</p>
+    </div>
+</div>
+
+<div class="report-nav">
+    <a class="report-nav__item" href="reports">الشامل</a>
+    <a class="report-nav__item" href="reports/sales">المبيعات</a>
+    <a class="report-nav__item active" href="reports/products">المنتجات</a>
+    <a class="report-nav__item" href="reports/categories">الأصناف</a>
+    <a class="report-nav__item" href="reports/users">المستخدمون</a>
+    <a class="report-nav__item" href="reports/stock">المخزون</a>
+</div>
+
+<div class="report-filters">
+    <div class="report-filters__actions">
+        <button class="btn-secondary" @onclick="Load" disabled="@isLoading">تحديث</button>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="state-box">جاري تحميل تقرير المنتجات...</div>
+}
+else if (!string.IsNullOrEmpty(loadError))
+{
+    <div class="state-box state-box--error">
+        ⚠ @loadError
+        <button class="btn-secondary" @onclick="Load">إعادة المحاولة</button>
+    </div>
+}
+else if (report is not null)
+{
+    <div class="kpi-grid kpi-grid--animate">
+        <div class="kpi-card kpi-card--lift kpi-card--total">
+            <div class="kpi-card__icon">🏷️</div>
+            <div class="kpi-card__value">@report.TotalProducts</div>
+            <div class="kpi-card__label">إجمالي المنتجات</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--low">
+            <div class="kpi-card__icon">⚠️</div>
+            <div class="kpi-card__value">@report.LowStockProducts</div>
+            <div class="kpi-card__label">منخفض المخزون</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--out">
+            <div class="kpi-card__icon">⛔</div>
+            <div class="kpi-card__value">@report.OutOfStockProducts</div>
+            <div class="kpi-card__label">نافذ</div>
+        </div>
+        <div class="kpi-card kpi-card--lift kpi-card--value">
+            <div class="kpi-card__icon">💵</div>
+            <div class="kpi-card__value">@report.TotalCostValue.ToString("N0")</div>
+            <div class="kpi-card__label">قيمة التكلفة</div>
+        </div>
+    </div>
+
+    <div class="kpi-grid" style="margin-top:14px">
+        <div class="kpi-card">
+            <div class="kpi-card__icon">🛒</div>
+            <div class="kpi-card__value">@report.TotalSellValue.ToString("N0")</div>
+            <div class="kpi-card__label">قيمة البيع المحتملة</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__icon">📈</div>
+            <div class="kpi-card__value">@report.PotentialProfit.ToString("N0")</div>
+            <div class="kpi-card__label">هامش محتمل</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__icon">✅</div>
+            <div class="kpi-card__value">@report.InStockProducts</div>
+            <div class="kpi-card__label">متوفر فوق الحد</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__icon">📊</div>
+            <div class="kpi-card__value">@report.AverageSellingPrice.ToString("N0")</div>
+            <div class="kpi-card__label">متوسط سعر البيع</div>
+        </div>
+    </div>
+
+    <div class="report-grid">
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>التوزيع حسب الصنف</h3></div>
+            <BarChart Items="report.ByCategory" UseCount="true" Tone="teal" />
+        </section>
+        <section class="report-panel">
+            <div class="report-panel__header"><h3>أعلى قيمة مخزون</h3></div>
+            <ProductMiniTable Items="report.HighestValueItems" ShowValue="true" />
+        </section>
+        <section class="report-panel report-panel--wide">
+            <div class="report-panel__header"><h3>منتجات منخفضة / نافذة</h3></div>
+            <ProductMiniTable Items="report.LowStockItems" ShowValue="false" />
+        </section>
+        <section class="report-panel report-panel--wide">
+            <div class="report-panel__header"><h3>أعلى كميات مخزون</h3></div>
+            <ProductMiniTable Items="report.TopByStock" ShowValue="false" />
+        </section>
+    </div>
+}
+
+@code {
+    private ProductsReport? report;
+    private bool isLoading = true;
+    private string? loadError;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            report = await ReportsService.GetProductsReportAsync(new ReportFilterDto { Top = 10 });
+        }
+        catch (Exception ex)
+        {
+            report = null;
+            loadError = ex is ApiRequestException apiEx ? apiEx.Message : "تعذر تحميل تقرير المنتجات";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

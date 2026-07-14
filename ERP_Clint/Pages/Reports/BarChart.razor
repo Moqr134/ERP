@@ -1,0 +1,43 @@
+@namespace ERP_Clint.Pages.Reports
+@using ERPDto.ReportsDto
+
+@if (Items is null || Items.Count == 0)
+{
+    <div class="report-empty">لا توجد بيانات للرسم</div>
+}
+else
+{
+    <div class="bar-chart">
+        @{
+            var max = Items.Max(i => Math.Max(i.Value, i.Count));
+            if (max <= 0) max = 1;
+        }
+        @foreach (var item in Items)
+        {
+            var metric = UseCount ? item.Count : item.Value;
+            var pct = Math.Clamp((metric / max) * 100, 0, 100);
+            <div class="bar-chart__row">
+                <div class="bar-chart__label" title="@item.Name">@item.Name</div>
+                <div class="bar-chart__track">
+                    <div class="bar-chart__fill @ToneClass" style="width:@pct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                </div>
+                <div class="bar-chart__value">@(UseCount ? item.Count.ToString("N0") : item.Value.ToString("N0"))</div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public List<NamedMetricDto>? Items { get; set; }
+    [Parameter] public bool UseCount { get; set; }
+    [Parameter] public string Tone { get; set; } = "orange";
+
+    private string ToneClass => Tone switch
+    {
+        "blue" => "bar-chart__fill--blue",
+        "green" => "bar-chart__fill--green",
+        "red" => "bar-chart__fill--red",
+        "teal" => "bar-chart__fill--teal",
+        _ => "bar-chart__fill--orange"
+    };
+}

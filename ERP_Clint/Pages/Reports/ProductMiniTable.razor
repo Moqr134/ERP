@@ -1,0 +1,64 @@
+@namespace ERP_Clint.Pages.Reports
+@using ERPDto.ReportsDto
+
+@if (Items is null || Items.Count == 0)
+{
+    <div class="report-empty">لا توجد عناصر</div>
+}
+else
+{
+    <div class="report-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>الصنف</th>
+                    <th>المخزون</th>
+                    <th>الحد الأدنى</th>
+                    @if (ShowValue)
+                    {
+                        <th>قيمة التكلفة</th>
+                    }
+                    <th>سعر البيع</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Items)
+                {
+                    <tr>
+                        <td>
+                            <div class="prod-name">@p.Name</div>
+                            <div class="prod-code">#@(p.Barcode ?? p.Sku ?? p.Id.ToString())</div>
+                        </td>
+                        <td>@(p.CategoryName ?? "—")</td>
+                        <td>
+                            @if (p.CurrentStock == 0)
+                            {
+                                <span class="badge badge--low">@p.CurrentStock</span>
+                            }
+                            else if (p.CurrentStock <= p.MinStockLevel)
+                            {
+                                <span class="badge badge--mid">@p.CurrentStock</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge--ok">@p.CurrentStock</span>
+                            }
+                        </td>
+                        <td>@p.MinStockLevel</td>
+                        @if (ShowValue)
+                        {
+                            <td>@p.StockCostValue.ToString("N0")</td>
+                        }
+                        <td>@p.SellingPrice.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public List<ProductReportRow>? Items { get; set; }
+    [Parameter] public bool ShowValue { get; set; }
+}
