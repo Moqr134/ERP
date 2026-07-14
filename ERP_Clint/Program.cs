@@ -12,7 +12,9 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ICatigoryService, CatigoryService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ISuppliersService, SuppliersService>();
 builder.Services.AddScoped<CostumAuth>();
+builder.Services.AddScoped<IStockTransactionsService, StockTransactionsService>();
 builder.Services.AddScoped(sp =>
     new HttpClient
     {
@@ -20,6 +22,6 @@ builder.Services.AddScoped(sp =>
 
     });
 builder.Services.AddAuthorizationCore();
-builder.Services.AddScoped<AuthenticationStateProvider, CostumAuth>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CostumAuth>());
 
 await builder.Build().RunAsync();

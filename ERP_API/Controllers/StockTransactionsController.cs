@@ -28,5 +28,13 @@ namespace ERP_API.Controllers
             await _stockTransactionsService.AddStockTransaction(model, _UserId);
             return Ok("تمت العمليه بنجاح");
         }
+
+        [HttpGet("GetStockTransactions")]
+        [Authorize]
+        public async Task<IActionResult> GetStockTransactions()
+        {
+            var list = await _stockTransactionsService.GetStockTransactionsAsync();
+            return Ok(list);
+        }
     }
 }

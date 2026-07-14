@@ -34,13 +34,16 @@
     <div class="table-panel__header">
         <h3>قائمة المنتجات</h3>
         <div class="header-actions">
-            <select class="filter-select" @bind="categoryFilter">
-                <option value="0">كل الأقسام</option>
-                @foreach (var category in categories)
-                {
-                    <option value="@category.Id">@category.Name</option>
-                }
-            </select>
+            <div class="search-select">
+                <input class="search-input filter-select" placeholder="اختر القسم أو ابحث..." @bind="categorySearch" @bind:event="oninput" @onfocus="() => OpenCategoryDropdown()" />
+                <div class="search-list @(isCategoryDropdownOpen ? "open" : "")">
+                    <div class="search-item" @onclick="() => SelectCategory(null)">كل الأقسام</div>
+                    @foreach (var category in FilteredCategories)
+                    {
+                        <div class="search-item" @onclick="() => SelectCategory(category)">@category.Name</div>
+                    }
+                </div>
+            </div>
             <div class="search-box">
                 <span>🔍</span>
                 <input type="text" @bind="searchTerm" @bind:event="oninput" placeholder="ابحث بالاسم أو الكود..." />
@@ -476,5 +479,12 @@
             grid-template-columns: repeat(2, 1fr);
         }
     }
+    /* searchable select styles (reused) */
+    .search-select { position: relative; display: inline-block; min-width: 200px; }
+    .search-input { width: 220px; box-sizing: border-box; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff; }
+    .search-list { position: absolute; left: 0; right: 0; max-height: 240px; overflow: auto; background: #0f1418; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; margin-top: 6px; display: none; z-index: 40; }
+    .search-list.open { display: block; }
+    .search-item { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
+    .search-item:hover { background: rgba(255,255,255,0.02); }
 </style>
 

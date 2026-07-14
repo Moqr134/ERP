@@ -63,6 +63,7 @@
         <NavLink class="nav-menu__link" href="accounting">
             <span class="nav-icon">🧾</span>
             <span>المحاسبة</span>
+            <span class="soon-badge">قريباً</span>
         </NavLink>
     </li>
 
@@ -70,6 +71,7 @@
         <NavLink class="nav-menu__link" href="hr">
             <span class="nav-icon">👥</span>
             <span>الموارد البشرية</span>
+            <span class="soon-badge">قريباً</span>
         </NavLink>
     </li>
 
@@ -236,7 +238,6 @@
 
     protected override void OnInitialized()
     {
-        // يفتح القائمة تلقائياً إذا المستخدم أصلاً واقف بأي صفحة من صفحات المخزون
         var currentPath = new Uri(Navigation.Uri).AbsolutePath;
         if (currentPath.Contains("/inventory/", StringComparison.OrdinalIgnoreCase))
         {

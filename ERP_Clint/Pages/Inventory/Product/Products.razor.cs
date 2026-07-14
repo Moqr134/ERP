@@ -19,6 +19,13 @@ namespace ERP_Clint.Pages.Inventory.Product
         private string searchTerm = string.Empty;
         private ProductsInfo? productsInfo;
         private int categoryFilter = 0;
+        private string categorySearch = string.Empty;
+        private bool isCategoryDropdownOpen;
+
+        private List<CategoryDto> FilteredCategories =>
+            string.IsNullOrWhiteSpace(categorySearch)
+                ? categories
+                : categories.Where(c => (c.Name ?? string.Empty).Contains(categorySearch, StringComparison.OrdinalIgnoreCase)).ToList();
 
         private bool isLoading = true;
         private string? loadError;
@@ -94,6 +101,26 @@ namespace ERP_Clint.Pages.Inventory.Product
             productBeingEdited = null;
             categories = categories ?? new List<CategoryDto>();
             isModalOpen = true;
+        }
+
+        private void OpenCategoryDropdown()
+        {
+            isCategoryDropdownOpen = true;
+        }
+
+        private void SelectCategory(CategoryDto? category)
+        {
+            if (category == null || category.Id == 0)
+            {
+                categoryFilter = 0;
+                categorySearch = string.Empty;
+            }
+            else
+            {
+                categoryFilter = category.Id;
+                categorySearch = category.Name ?? string.Empty;
+            }
+            isCategoryDropdownOpen = false;
         }
 
         private void OpenEditModal(ProductDto product)

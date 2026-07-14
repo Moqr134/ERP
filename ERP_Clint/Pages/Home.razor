@@ -1,6 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Authorization
 @using ERP_Clint.Service.InventoryService
 @using ERPDto.ProductsDto
+@using ERP_Clint.Pages.Inventory.Stock
 @page "/"
 @layout MainLayout
 @attribute [Authorize]
@@ -55,15 +56,21 @@
                     <span>🗂️</span>
                     <span>إدارة الأصناف</span>
                 </a>
+                <button class="quick-link" @onclick="OpenStockModal" style="cursor:pointer;">
+                    <span>🔄</span>
+                    <span>حركة مخزون سريعة</span>
+                </button>
             </div>
         </div>
     }
 </div>
 
+<StockTransactionModal IsOpen="isStockModalOpen" OnClose="CloseStockModal" OnSuccess="HandleStockSuccess" />
 @code {
     private ProductsInfo? productsInfo;
     private int categoriesCount;
     private bool isLoading = true;
+    private bool isStockModalOpen;
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,6 +81,31 @@
             await Task.WhenAll(infoTask, categoriesTask);
             productsInfo = await infoTask;
             categoriesCount = (await categoriesTask).Count;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenStockModal()
+    {
+        isStockModalOpen = true;
+    }
+
+    private async Task CloseStockModal()
+    {
+        isStockModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleStockSuccess()
+    {
+        // refresh KPIs
+        isLoading = true;
+        try
+        {
+            productsInfo = await ProductService.GetProductsInfo();
         }
         finally
         {

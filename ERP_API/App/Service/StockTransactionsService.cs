@@ -15,6 +15,27 @@ namespace ERP_API.App.Service
         public StockTransactionsService(DBContext context, IMapper mapper) : base(context, mapper)
         {
         }
+
+        public async Task<List<StockTransactionDto>> GetStockTransactionsAsync()
+        {
+            List<StockTransactionDto> list = await _context.StockTransactions
+                .OrderByDescending(s => s.CreateDate)
+                .Take(500)
+                .Select(s => new StockTransactionDto
+                {
+                    Id = s.Id,
+                    ProductId = s.ProductId,
+                    ProductName = _context.Products.FirstOrDefault(p => p.Id == s.ProductId)!.Name??"المنتج محذوف",
+                    Quantity = s.Quantity,
+                    TransactionType = s.TransactionType,
+                    ReferenceId = s.ReferenceId,
+                    Notes = s.Notes,
+                    CreateDate = s.CreateDate,
+                    CreateUserId = s.CreateUserId
+                })
+                .ToListAsync();
+            return list;
+        }
         private async Task<Product?> GetProductAsync(int Id)
         {
             Product? product = await _context.Products.FirstOrDefaultAsync(p => p.Id == Id && !p.IsRemoved);
