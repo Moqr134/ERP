@@ -82,7 +82,7 @@
         </Authorized>
     </AuthorizeView>
 
-    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllCategories, PermissionNames.GetAllProductsAsync, PermissionNames.GetAllSuppliers, PermissionNames.GetStockTransactions)">
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllCategories, PermissionNames.GetAllProductsAsync, PermissionNames.GetAllSuppliers, PermissionNames.GetAllWarehouses, PermissionNames.GetStockTransactions)">
         <Authorized>
             <li class="nav-menu__item">
                 <button type="button" class="nav-menu__link nav-menu__toggle @(isInventoryOpen ? "open" : "")" @onclick="ToggleInventory">
@@ -118,6 +118,16 @@
                                 <NavLink class="nav-submenu__link" href="inventory/suppliers">
                                     <span class="nav-icon">🚚</span>
                                     <span>الموردون</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllWarehouses)" Context="whCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="inventory/warehouses">
+                                    <span class="nav-icon">🏬</span>
+                                    <span>المخازن</span>
                                 </NavLink>
                             </li>
                         </Authorized>

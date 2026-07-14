@@ -17,6 +17,7 @@ namespace ERP_API.Domin.ProductEntity
             builder.Property(x => x.CurrentStock).IsRequired();
             builder.Property(x => x.MinStockLevel).IsRequired();
             builder.Property(x => x.CategoriesId).IsRequired();
+            builder.Property(x => x.WarehouseId);
             builder.Property(x => x.CreateDate).IsRequired();
             builder.Property(x => x.CreateUserId);
             builder.Property(x => x.UpdateDate);
@@ -26,6 +27,7 @@ namespace ERP_API.Domin.ProductEntity
             builder.Property(x => x.RemoveUserId);
             builder.Property(x => x.Version).IsRowVersion();
             builder.HasOne(x => x.Categories).WithMany(x => x.Products).HasForeignKey(x => x.CategoriesId).OnDelete(DeleteBehavior.Restrict);
+            builder.HasOne(x => x.Warehouse).WithMany(x => x.Products).HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.SetNull);
             builder.HasQueryFilter(x => x.IsRemoved == false);
         }
     }

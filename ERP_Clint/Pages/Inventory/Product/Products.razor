@@ -87,6 +87,7 @@
             <thead>
                 <tr>
                     <th>المنتج</th>
+                    <th>المخزن</th>
                     <th>الكمية</th>
                     <th>السعر</th>
                     <th>الحالة</th>
@@ -110,6 +111,7 @@
                                 </div>
                             </div>
                         </td>
+                        <td>@(string.IsNullOrWhiteSpace(product.WarehouseName) ? "—" : product.WarehouseName)</td>
                         <td>@product.CurrentStock</td>
                         <td>@product.SellingPrice</td>
                         <td>
@@ -173,6 +175,7 @@
 <ProductModal IsOpen="isModalOpen"
               EditingProduct="productBeingEdited"
               Categories="categories"
+              Warehouses="warehouses"
               OnSaved="HandleSaved"
               OnClose="CloseModal" />
 

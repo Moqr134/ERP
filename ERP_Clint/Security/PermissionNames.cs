@@ -50,6 +50,12 @@ public static class PermissionNames
     public const string EditSuppliers = "EditSuppliers";
     public const string DeleteSuppliers = "DeleteSuppliers";
 
+    public const string GetAllWarehouses = "GetAllWarehouses";
+    public const string GetWarehouseById = "GetWarehouseById";
+    public const string AddWarehouse = "AddWarehouse";
+    public const string EditWarehouse = "EditWarehouse";
+    public const string DeleteWarehouse = "DeleteWarehouse";
+
     public const string AddStockTransaction = "AddStockTransaction";
     public const string GetStockTransactions = "GetStockTransactions";
 
