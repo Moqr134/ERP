@@ -1,6 +1,7 @@
 using AutoMapper;
 using ERP_API.App.IService;
 using ERP_API.App.Service;
+using ERP_API.Infrastructure.Permissions;
 using Infrastructure.Cache;
 using Infrastructure.JWT;
 using Infrastructure.Mapping;
@@ -90,6 +91,22 @@ builder.Services.AddCors(options =>
         });
 });
 var app = builder.Build();
+
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<DBContext>();
+        await db.Database.MigrateAsync();
+    }
+
+    await PermissionSeeder.EnsurePermissionsAsync(app.Services, app.Logger);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Failed to apply migrations or seed system permissions on startup.");
+    throw;
+}
 
 if (app.Environment.IsDevelopment())
 {
