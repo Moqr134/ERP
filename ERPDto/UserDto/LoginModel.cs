@@ -5,7 +5,7 @@ namespace SherdProject.DTO
 {
     public class LoginModel
     {
-        [StringValidate(5, 100, false)]
+        [StringValidate(0, 100, false)]
         public string Username { get; set; }
         [StringValidate(5, 100, false)]
         public string Password { get; set; }

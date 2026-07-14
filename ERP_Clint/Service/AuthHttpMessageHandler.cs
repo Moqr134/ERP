@@ -2,10 +2,6 @@ using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using System.Net;
 
 namespace ERP_Clint.Service;
-
-/// <summary>
-/// Adds credentials + CSRF header, and retries once after refresh on 401.
-/// </summary>
 public class AuthHttpMessageHandler : DelegatingHandler
 {
     private static readonly SemaphoreSlim RefreshLock = new(1, 1);

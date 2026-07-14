@@ -3,10 +3,6 @@ namespace ERP_Clint.Security;
 public sealed record PermissionMeta(string Name, string DisplayName);
 
 public sealed record PermissionGroup(string Key, string Title, IReadOnlyList<PermissionMeta> Permissions);
-
-/// <summary>
-/// Groups permissions for UI display (roles/users permission editors).
-/// </summary>
 public static class PermissionCatalog
 {
     public static IReadOnlyList<PermissionGroup> Groups { get; } =

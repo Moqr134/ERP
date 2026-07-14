@@ -1,9 +1,4 @@
 namespace Infrastructure.Middleware;
-
-/// <summary>
-/// Requires a custom header on cookie-authenticated mutating requests to mitigate CSRF.
-/// Simple cross-site form posts cannot set custom headers.
-/// </summary>
 public class CsrfHeaderMiddleware
 {
     private static readonly HashSet<string> SafeMethods = new(StringComparer.OrdinalIgnoreCase)
