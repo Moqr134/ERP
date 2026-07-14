@@ -52,4 +52,8 @@ public static class PermissionNames
 
     public const string AddStockTransaction = "AddStockTransaction";
     public const string GetStockTransactions = "GetStockTransactions";
+
+    public const string CompleteSale = "CompleteSale";
+    public const string GetSales = "GetSales";
+    public const string GetSaleById = "GetSaleById";
 }

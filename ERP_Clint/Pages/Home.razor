@@ -74,6 +74,14 @@
                         </button>
                     </Authorized>
                 </AuthorizeView>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompleteSale)">
+                    <Authorized>
+                        <a class="quick-link" href="sales/pos">
+                            <span>🛒</span>
+                            <span>نقطة البيع</span>
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
             </div>
         </div>
     }

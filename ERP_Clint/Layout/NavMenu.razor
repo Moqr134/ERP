@@ -47,13 +47,40 @@
         </Authorized>
     </AuthorizeView>
 
-    <li class="nav-menu__item">
-        <span class="nav-menu__link nav-menu__link--soon">
-            <span class="nav-icon">💰</span>
-            <span>المبيعات</span>
-            <span class="soon-badge">قريباً</span>
-        </span>
-    </li>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompleteSale, PermissionNames.GetSales)">
+        <Authorized>
+            <li class="nav-menu__item">
+                <button type="button" class="nav-menu__link nav-menu__toggle @(isSalesOpen ? "open" : "")" @onclick="ToggleSales">
+                    <span class="nav-icon">💰</span>
+                    <span>المبيعات</span>
+                    <span class="nav-arrow">›</span>
+                </button>
+
+                <ul class="nav-submenu @(isSalesOpen ? "open" : "")">
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompleteSale)" Context="posCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="sales/pos">
+                                    <span class="nav-icon">🛒</span>
+                                    <span>نقطة البيع</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetSales)" Context="histCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="sales/history">
+                                    <span class="nav-icon">🧾</span>
+                                    <span>سجل المبيعات</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                </ul>
+            </li>
+        </Authorized>
+    </AuthorizeView>
 
     <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllCategories, PermissionNames.GetAllProductsAsync, PermissionNames.GetAllSuppliers, PermissionNames.GetStockTransactions)">
         <Authorized>
@@ -268,6 +295,7 @@
 
     private bool isInventoryOpen;
     private bool isUsersOpen;
+    private bool isSalesOpen;
 
     protected override void OnInitialized()
     {
@@ -280,6 +308,10 @@
         {
             isUsersOpen = true;
         }
+        if (currentPath.Contains("/sales", StringComparison.OrdinalIgnoreCase))
+        {
+            isSalesOpen = true;
+        }
     }
 
     private void ToggleInventory()
@@ -290,5 +322,10 @@
     private void ToggleUsers()
     {
         isUsersOpen = !isUsersOpen;
+    }
+
+    private void ToggleSales()
+    {
+        isSalesOpen = !isSalesOpen;
     }
 }

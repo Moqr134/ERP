@@ -75,6 +75,13 @@ public static class PermissionCatalog
             new(PermissionNames.GetStockTransactions, "عرض حركات المخزون"),
             new(PermissionNames.AddStockTransaction, "إضافة حركة مخزون"),
         ]),
+
+        new("sales", "المبيعات",
+        [
+            new(PermissionNames.CompleteSale, "إتمام بيع مباشر (POS)"),
+            new(PermissionNames.GetSales, "عرض فواتير المبيعات"),
+            new(PermissionNames.GetSaleById, "عرض تفاصيل فاتورة"),
+        ]),
     ];
 
     private static readonly Dictionary<string, string> DisplayNames =

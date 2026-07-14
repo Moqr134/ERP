@@ -63,6 +63,11 @@ public static class SystemPermissions
     public const string AddStockTransaction = "AddStockTransaction";
     public const string GetStockTransactions = "GetStockTransactions";
 
+    // Sales / POS
+    public const string CompleteSale = "CompleteSale";
+    public const string GetSales = "GetSales";
+    public const string GetSaleById = "GetSaleById";
+
     /// <summary>
     /// All permissions the system must have in the database.
     /// </summary>
@@ -115,5 +120,9 @@ public static class SystemPermissions
 
         AddStockTransaction,
         GetStockTransactions,
+
+        CompleteSale,
+        GetSales,
+        GetSaleById,
     ];
 }

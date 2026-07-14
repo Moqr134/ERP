@@ -15,6 +15,7 @@ namespace ERP_Clint.Service.InventoryService
         public Task<HttpResponseMessage> CreateProduct(CreateProductModel model);
         public Task<HttpResponseMessage> UpdateProduct(UpdateProductModel model);
         public Task<HttpResponseMessage> DeleteProduct(int id);
+        public Task<ProductDto?> GetProductByBarcodeAsync(string barcode);
     }
     public class ProductService : IProductService
     {
@@ -71,6 +72,18 @@ namespace ERP_Clint.Service.InventoryService
             var json = JsonSerializer.Serialize(model);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             return await _httpClient.PutAsync("api/Product/UpdateProduct", content);
+        }
+
+        public async Task<ProductDto?> GetProductByBarcodeAsync(string barcode)
+        {
+            var encoded = Uri.EscapeDataString(barcode);
+            var response = await _httpClient.GetAsync($"api/Product/GetProductByBarcode/{encoded}");
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر البحث بالباركود", response.StatusCode);
+
+            return await response.Content.ReadFromJsonAsync<ProductDto>();
         }
     }
 }

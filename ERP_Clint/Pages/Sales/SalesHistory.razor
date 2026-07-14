@@ -1,0 +1,297 @@
+@page "/sales/history"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
+@using ERP_Clint.Service
+@using ERP_Clint.Service.SalesService
+@using ERPDto.PaigingDto
+@using ERPDto.SalesDto
+@attribute [Authorize(Roles = "FullAccess,GetSales")]
+@inject ISalesService SalesService
+
+<PageTitle>سجل المبيعات</PageTitle>
+
+<div class="table-panel">
+    <div class="table-panel__header">
+        <h3>سجل المبيعات</h3>
+        <div class="header-actions">
+            <div class="search-box">
+                <span>🔍</span>
+                <input placeholder="ابحث برقم الفاتورة أو الملاحظات..." @bind="search" @bind:event="oninput"
+                       @onkeydown="OnSearchKey" />
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button class="btn-secondary" @onclick="Search">بحث</button>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompleteSale)">
+                    <Authorized>
+                        <a class="btn-primary" href="sales/pos" style="text-decoration:none; display:inline-flex; align-items:center;">نقطة البيع</a>
+                    </Authorized>
+                </AuthorizeView>
+                <button class="btn-secondary" @onclick="Reload">تحديث</button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="state-box">جاري تحميل الفواتير...</div>
+    }
+    else if (!string.IsNullOrEmpty(loadError))
+    {
+        <div class="state-box state-box--error">
+            ⚠ @loadError
+            <button class="btn-secondary" @onclick="Reload">إعادة المحاولة</button>
+        </div>
+    }
+    else if (sales is null || sales.Count == 0)
+    {
+        <div class="state-box">لا توجد فواتير حالياً</div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:160px">الوقت</th>
+                    <th style="width:160px">رقم الفاتورة</th>
+                    <th style="width:100px">الدفع</th>
+                    <th style="width:100px">الخصم</th>
+                    <th style="width:120px">الإجمالي</th>
+                    <th>ملاحظات</th>
+                    <th style="width:90px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in sales)
+                {
+                    <tr>
+                        <td class="mono">@s.CreateDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="mono">@s.InvoiceNumber</td>
+                        <td>@(s.PaymentMethod == "Cash" ? "نقدي" : s.PaymentMethod == "Card" ? "بطاقة" : s.PaymentMethod)</td>
+                        <td class="mono">@s.Discount.ToString("N0")</td>
+                        <td class="mono">@s.Total.ToString("N0")</td>
+                        <td>@(s.Notes ?? "—")</td>
+                        <td>
+                            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetSaleById)" Context="detailCtx">
+                                <Authorized>
+                                    <button class="btn-secondary" style="padding:6px 10px; font-size:12px;" @onclick="() => OpenDetails(s.Id)">تفاصيل</button>
+                                </Authorized>
+                            </AuthorizeView>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (pageCount > 1)
+        {
+            <div class="sales-pager">
+                <button class="btn-secondary" disabled="@(pageIndex <= 1)" @onclick="PrevPage">السابق</button>
+                <span>@pageIndex / @pageCount</span>
+                <button class="btn-secondary" disabled="@(pageIndex >= pageCount)" @onclick="NextPage">التالي</button>
+            </div>
+        }
+    }
+</div>
+
+@if (selectedSale is not null)
+{
+    <div class="sale-modal-overlay" @onclick="CloseDetails">
+        <div class="sale-modal" @onclick:stopPropagation="true">
+            <div class="sale-modal__header">
+                <div>
+                    <h3>تفاصيل الفاتورة</h3>
+                    <div class="mono sale-modal__inv">@selectedSale.InvoiceNumber</div>
+                </div>
+                <button type="button" class="btn-secondary" @onclick="CloseDetails">إغلاق</button>
+            </div>
+            <div class="sale-modal__meta">
+                <span>@(selectedSale.PaymentMethod == "Cash" ? "نقدي" : "بطاقة")</span>
+                <span class="mono">@selectedSale.CreateDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th style="width:80px">الكمية</th>
+                        <th style="width:100px">السعر</th>
+                        <th style="width:110px">الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in selectedSale.Lines)
+                    {
+                        <tr>
+                            <td>
+                                <div>@line.ProductName</div>
+                                <div class="mono" style="font-size:12px; opacity:.5;">@line.Barcode</div>
+                            </td>
+                            <td>@line.Quantity</td>
+                            <td class="mono">@line.UnitPrice.ToString("N0")</td>
+                            <td class="mono">@line.LineTotal.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="sale-modal__totals">
+                <div><span>المجموع</span><strong class="mono">@selectedSale.SubTotal.ToString("N0")</strong></div>
+                <div><span>الخصم</span><strong class="mono">@selectedSale.Discount.ToString("N0")</strong></div>
+                <div class="sale-modal__total"><span>الصافي</span><strong class="mono">@selectedSale.Total.ToString("N0")</strong></div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .sales-pager {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 16px;
+        color: rgba(255,255,255,0.55);
+        font-weight: 700;
+    }
+
+    .sale-modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.65);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 50; padding: 20px;
+    }
+
+    .sale-modal {
+        background: #141a22;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 16px;
+        padding: 20px;
+        width: min(640px, 100%);
+        max-height: 85vh;
+        overflow: auto;
+    }
+
+    .sale-modal__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+    .sale-modal__header h3 { margin: 0 0 4px; color: #fff; }
+    .sale-modal__inv { color: #fb923c; font-weight: 800; }
+
+    .sale-modal__meta {
+        display: flex;
+        gap: 16px;
+        color: rgba(255,255,255,0.5);
+        font-size: 13px;
+        margin-bottom: 14px;
+    }
+
+    .sale-modal table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    .sale-modal th, .sale-modal td {
+        text-align: right;
+        padding: 8px 6px;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        color: rgba(255,255,255,0.85);
+        font-size: 13px;
+    }
+    .sale-modal th { color: rgba(255,255,255,0.45); font-size: 12px; }
+
+    .sale-modal__totals { display: flex; flex-direction: column; gap: 8px; }
+    .sale-modal__totals > div {
+        display: flex; justify-content: space-between;
+        color: rgba(255,255,255,0.65); font-size: 14px;
+    }
+    .sale-modal__totals strong { color: #fff; }
+    .sale-modal__total { padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 16px; }
+    .sale-modal__total strong { color: #fb923c; font-size: 18px; }
+
+    .mono { font-variant-numeric: tabular-nums; direction: ltr; display: inline-block; }
+</style>
+
+@code {
+    private List<SaleDto> sales = new();
+    private bool isLoading = true;
+    private string search = string.Empty;
+    private string? loadError;
+    private int pageIndex = 1;
+    private int pageCount;
+    private const int PageSize = 15;
+    private SaleDto? selectedSale;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSales();
+    }
+
+    private async Task OnSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await Search();
+    }
+
+    private async Task Search()
+    {
+        pageIndex = 1;
+        await LoadSales();
+    }
+
+    private async Task Reload() => await LoadSales();
+
+    private async Task PrevPage()
+    {
+        if (pageIndex <= 1) return;
+        pageIndex--;
+        await LoadSales();
+    }
+
+    private async Task NextPage()
+    {
+        if (pageIndex >= pageCount) return;
+        pageIndex++;
+        await LoadSales();
+    }
+
+    private async Task LoadSales()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            var result = await SalesService.GetSalesAsync(new PageDto
+            {
+                PageIndex = pageIndex,
+                PageSize = PageSize,
+                SearchTerm = string.IsNullOrWhiteSpace(search) ? null : search.Trim()
+            });
+
+            sales = result?.Items ?? new();
+            pageCount = result?.PageCount ?? 0;
+            pageIndex = result?.PageIndex ?? pageIndex;
+        }
+        catch
+        {
+            loadError = "تعذر تحميل المبيعات";
+            sales = new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OpenDetails(int id)
+    {
+        try
+        {
+            selectedSale = await SalesService.GetSaleByIdAsync(id);
+        }
+        catch
+        {
+            loadError = "تعذر تحميل تفاصيل الفاتورة";
+        }
+    }
+
+    private void CloseDetails() => selectedSale = null;
+}
