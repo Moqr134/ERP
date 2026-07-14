@@ -1,10 +1,9 @@
-﻿using ERPDto.CategoriesDto;
-using ERPDto.PaigingDto;
+﻿using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using ERP_Clint.Service;
 
 namespace ERP_Clint.Service.InventoryService
 {
@@ -12,7 +11,7 @@ namespace ERP_Clint.Service.InventoryService
     {
         public Task<List<ProductDto>?> GetAllProductsAsync(PageDto page);
         public Task<ProductDto?> GetProductByIdAsync(int id);
-        public Task<ProductsInfo?> GetProductsInfo();
+        public Task<ProductsInfo?> GetProductsInfo(PageDto page);
         public Task<HttpResponseMessage> CreateProduct(CreateProductModel model);
         public Task<HttpResponseMessage> UpdateProduct(UpdateProductModel model);
         public Task<HttpResponseMessage> DeleteProduct(int id);
@@ -28,84 +27,50 @@ namespace ERP_Clint.Service.InventoryService
         {
             var json = JsonSerializer.Serialize(model);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/Product/CreateProduct")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PostAsync("api/Product/CreateProduct", content);
         }
 
         public async Task<HttpResponseMessage> DeleteProduct(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Delete, $"api/Product/DeleteProduct/{id}");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.DeleteAsync($"api/Product/DeleteProduct/{id}");
         }
 
         public async Task<List<ProductDto>?> GetAllProductsAsync(PageDto page)
         {
             var json = JsonSerializer.Serialize(page);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("api/Product/GetAllProductsAsync", content);
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر تحميل المنتجات", response.StatusCode);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"api/Product/GetAllProductsAsync")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            if(response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<List<ProductDto>>();
-            }
-            return new List<ProductDto>();
+            return await response.Content.ReadFromJsonAsync<List<ProductDto>>();
         }
 
         public async Task<ProductDto?> GetProductByIdAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"api/Product/GetProductByIdAsync/{id}");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+            var response = await _httpClient.GetAsync($"api/Product/GetProductByIdAsync/{id}");
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر تحميل المنتج", response.StatusCode);
 
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ProductDto>();
-            }
-            return null;
+            return await response.Content.ReadFromJsonAsync<ProductDto>();
         }
 
-        public async Task<ProductsInfo?> GetProductsInfo()
+        public async Task<ProductsInfo?> GetProductsInfo(PageDto page)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"api/Product/GetProductsInfo");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+            var json = JsonSerializer.Serialize(page);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("api/Product/GetProductsInfo", content);
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر تحميل معلومات المنتجات", response.StatusCode);
 
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ProductsInfo>();
-            }
-            return new ProductsInfo();
+            return await response.Content.ReadFromJsonAsync<ProductsInfo>();
         }
 
         public async Task<HttpResponseMessage> UpdateProduct(UpdateProductModel model)
         {
             var json = JsonSerializer.Serialize(model);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Put, "api/Product/UpdateProduct")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PutAsync("api/Product/UpdateProduct", content);
         }
     }
 }

@@ -3,9 +3,8 @@
 @using Microsoft.AspNetCore.Authorization
 @layout MainLayout
 @attribute [Authorize]
-@inject HttpClient Http
 
- @if (!isLoading && loadError is null && productsInfo is not null)
+@if (!isLoading && loadError is null && productsInfo is not null)
 {
     <div class="kpi-grid">
         <div class="kpi-card kpi-card--total">
@@ -46,7 +45,7 @@
             </div>
             <div class="search-box">
                 <span>🔍</span>
-                <input type="text" @bind="searchTerm" @bind:event="oninput" placeholder="ابحث بالاسم أو الكود..." />
+                <input type="text" value="@searchTerm" @oninput="OnSearchChanged" placeholder="ابحث بالاسم أو الكود..." />
             </div>
             <button class="btn-primary" @onclick="OpenAddModal">+ إضافة منتج</button>
         </div>
@@ -63,7 +62,7 @@
             <button class="btn-secondary" @onclick="LoadAll">إعادة المحاولة</button>
         </div>
     }
-    else if (FilteredProducts.Count == 0)
+    else if (products.Count == 0)
     {
         <div class="state-box">لا توجد منتجات مطابقة</div>
     }
@@ -80,7 +79,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var product in FilteredProducts)
+                @foreach (var product in products)
                 {
                     <tr>
                         <td>
@@ -120,7 +119,7 @@
         </table>
         <div class="pager">
             <span class="pager__info">
-                عرض @(((page.PageIndex - 1) *page.PageSize) + 1)–@(Math.Min(page.PageIndex * page.PageSize, productsInfo.TotalProducts)) من أصل @productsInfo.TotalProducts منتج
+                عرض @(((page.PageIndex - 1) *page.PageSize) + 1)–@(Math.Min(page.PageIndex * page.PageSize, productsInfo?.TotalProducts ?? 0)) من أصل @(productsInfo?.TotalProducts ?? 0) منتج
             </span>
 
             <div class="pager__controls">
@@ -134,7 +133,7 @@
                     </button>
                 }
 
-                <button class="pager__btn" disabled="@(page.PageIndex == productsInfo.TotalProducts || productsInfo.TotalProducts == 0)" @onclick="() => GoToPage(page.PageIndex + 1)">التالي ›</button>
+                <button class="pager__btn" disabled="@(page.PageIndex >= CurrentTotalPages || CurrentTotalPages == 0)" @onclick="() => GoToPage(page.PageIndex + 1)">التالي ›</button>
             </div>
         </div>
     }
@@ -151,6 +150,11 @@
                      TargetName="@(productBeingDeleted?.Name ?? "")"
                      OnConfirm="HandleDeleteConfirmed"
                      OnCancel="CloseDeleteModal" />
+
+@if (!string.IsNullOrEmpty(deleteError))
+{
+    <div class="state-box state-box--error" style="margin-top:12px;">⚠ @deleteError</div>
+}
 
 <style>
     .kpi-grid {

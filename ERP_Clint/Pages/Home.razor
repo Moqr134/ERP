@@ -76,11 +76,16 @@
     {
         try
         {
-            var infoTask = ProductService.GetProductsInfo();
+            var infoTask = ProductService.GetProductsInfo(new ERPDto.PaigingDto.PageDto());
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             await Task.WhenAll(infoTask, categoriesTask);
             productsInfo = await infoTask;
             categoriesCount = (await categoriesTask).Count;
+        }
+        catch
+        {
+            productsInfo = null;
+            categoriesCount = 0;
         }
         finally
         {
@@ -105,7 +110,11 @@
         isLoading = true;
         try
         {
-            productsInfo = await ProductService.GetProductsInfo();
+            productsInfo = await ProductService.GetProductsInfo(new ERPDto.PaigingDto.PageDto());
+        }
+        catch
+        {
+            productsInfo = null;
         }
         finally
         {

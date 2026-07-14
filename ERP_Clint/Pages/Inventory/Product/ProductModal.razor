@@ -43,9 +43,19 @@
 
                     <div class="form-row-3">
                         <div class="form-group">
+                            <label>سعر الكلفة (د.ع)</label>
+                            <InputNumber @bind-Value="formModel.CostPrice" class="form-input" placeholder="0" />
+                            <ValidationMessage For="@(() => formModel.CostPrice)" />
+                        </div>
+                        <div class="form-group">
                             <label>السعر (د.ع)</label>
                             <InputNumber @bind-Value="formModel.Price" class="form-input" placeholder="0" />
                             <ValidationMessage For="@(() => formModel.Price)" />
+                        </div>
+                        <div class="form-group">
+                            <label>أقل كمية ممكنة</label>
+                            <InputNumber @bind-Value="formModel.MinStockLevel" class="form-input" placeholder="0" />
+                            <ValidationMessage For="@(() => formModel.MinStockLevel)" />
                         </div>
                     </div>
                 </div>
@@ -73,15 +83,15 @@
 
                 <div class="form-row-2">
                     <div class="form-group">
-                        <label>كود المنتج</label>
+                        <label>رمز المنتج (SKU)</label>
                         <InputText @bind-Value="Model.SKU" class="form-input" placeholder="PRD-1001" />
-                        <ValidationMessage For="@(() => Model.Barcode)" />
+                        <ValidationMessage For="@(() => Model.SKU)" />
                     </div>
                     
                     <div class="form-group">
-                        <label>رمز المنتج</label>
-                        <InputText @bind-Value="Model.Barcode" class="form-input" placeholder="رمز المنتج" />
-                        <ValidationMessage For="@(() => Model.SKU)" />
+                        <label>الباركود</label>
+                        <InputText @bind-Value="Model.Barcode" class="form-input" placeholder="رمز الباركود" />
+                        <ValidationMessage For="@(() => Model.Barcode)" />
                     </div>
                 </div>
 

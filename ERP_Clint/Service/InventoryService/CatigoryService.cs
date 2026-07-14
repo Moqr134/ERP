@@ -1,8 +1,8 @@
 ﻿using ERPDto.CategoriesDto;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using ERP_Clint.Service;
 
 namespace ERP_Clint.Service.InventoryService
 {
@@ -25,62 +25,37 @@ namespace ERP_Clint.Service.InventoryService
         {
             var json = JsonSerializer.Serialize(category);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/categories/CreateCategory")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PostAsync("api/categories/CreateCategory", content);
         }
 
         public async Task<HttpResponseMessage> DeleteCategoryAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Delete, $"api/categories/DeleteCategory/{id}");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.DeleteAsync($"api/categories/DeleteCategory/{id}");
         }
 
         public async Task<List<CategoryDto>> GetAllCategoriesAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, "api/categories/GetAllCategories");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<List<CategoryDto>>() ?? new List<CategoryDto>();
-            }
-            return new List<CategoryDto>();
+            var response = await _httpClient.GetAsync("api/categories/GetAllCategories");
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر تحميل الأصناف", response.StatusCode);
+
+            return await response.Content.ReadFromJsonAsync<List<CategoryDto>>() ?? new List<CategoryDto>();
         }
 
         public async Task<CategoryDto?> GetCategoryByIdAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"api/categories/GetCategoryById/{id}");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<CategoryDto>();
-            }
-            return null;
+            var response = await _httpClient.GetAsync($"api/categories/GetCategoryById/{id}");
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر تحميل الصنف", response.StatusCode);
+
+            return await response.Content.ReadFromJsonAsync<CategoryDto>();
         }
 
         public async Task<HttpResponseMessage> UpdateCategoryAsync(CategoryDto category)
         {
             var json = JsonSerializer.Serialize(category);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Put, "api/categories/UpdateCategory")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PutAsync("api/categories/UpdateCategory", content);
         }
     }
 }

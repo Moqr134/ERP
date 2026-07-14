@@ -1,16 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Validation.Attribute;
+﻿using Validation.Attribute;
 
 namespace ERPDto.RolesDto
 {
     public class RoleDto
     {
         public int Id { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
+        [StringValidate(2, 100, false)]
+        public string Name { get; set; } = string.Empty;
+        [StringValidate(-1, 500, true)]
+        public string Description { get; set; } = string.Empty;
     }
 }

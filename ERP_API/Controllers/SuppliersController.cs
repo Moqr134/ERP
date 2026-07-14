@@ -5,7 +5,6 @@ using Infrastructure.Cache;
 using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SecondApi.Controllers;
 
@@ -21,21 +20,21 @@ namespace ERP_API.Controllers
             _suppliersService = suppliersServise;
         }
         [HttpGet("GetAllSuppliers")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,GetAllSuppliers")]
         public async Task<IActionResult> GetAllSuppliers()
         {
             List<SuppliersDto> suppliers = await _suppliersService.GetAllSupplires();
             return Ok(suppliers);
         }
         [HttpGet("GetSupplierById/{id}")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,GetSupplierById")]
         public async Task<IActionResult> GetSupplierById(int id)
         {
             SuppliersDto supplier = await _suppliersService.GetSuppliresById(id);
             return Ok(supplier);
         }
         [HttpPost("AddSuppliers")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,AddSuppliers")]
         public async Task<IActionResult> AddSuppliers([FromBody] SuppliersModel supplier)
         {
             if (_UserId == 0) GetUserId();
@@ -43,7 +42,7 @@ namespace ERP_API.Controllers
             return Ok();
         }
         [HttpPut("EditSuppliers")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,EditSuppliers")]
         public async Task<IActionResult> EditSuppliers([FromBody] SuppliersModel supplier)
         {
             if (_UserId == 0) GetUserId();
@@ -51,7 +50,7 @@ namespace ERP_API.Controllers
             return Ok();
         }
         [HttpDelete("DeleteSuppliers/{id}")]
-        [Authorize]
+        [Authorize(Roles = "FullAccess,DeleteSuppliers")]
         public async Task<IActionResult> DeleteSuppliers(int id)
         {
             if (_UserId == 0) GetUserId();

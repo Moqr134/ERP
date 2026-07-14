@@ -1,6 +1,7 @@
 ﻿using ERP_API.Infrastructure.Services;
 using Infrastructure.AppException;
 using Infrastructure.Logger;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Net;
 using Validation;
@@ -58,6 +59,21 @@ public class ErrorHandler
                 case InvalidOperationException:
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     objectResult = new { exception.Message };
+                    break;
+
+                case ArgumentException:
+                    response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    objectResult = new { exception.Message };
+                    break;
+
+                case DbUpdateConcurrencyException:
+                    response.StatusCode = (int)HttpStatusCode.Conflict;
+                    objectResult = new { Message = "تم تعديل البيانات من مستخدم آخر، أعد المحاولة" };
+                    break;
+
+                case DbUpdateException:
+                    response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    objectResult = new { Message = "فشل حفظ البيانات، تحقق من المدخلات" };
                     break;
 
                 default:

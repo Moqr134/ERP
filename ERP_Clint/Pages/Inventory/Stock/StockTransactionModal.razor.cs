@@ -46,6 +46,17 @@ namespace ERP_Clint.Pages.Inventory.Stock
 
         private async Task HandleSave()
         {
+            if (formModel.ProductId <= 0)
+            {
+                errorMessage = "يرجى اختيار منتج";
+                return;
+            }
+            if (formModel.Quantity <= 0)
+            {
+                errorMessage = "الكمية يجب أن تكون أكبر من صفر";
+                return;
+            }
+
             isSaving = true;
             errorMessage = null;
             try
@@ -57,7 +68,9 @@ namespace ERP_Clint.Pages.Inventory.Stock
                     await Close();
                     return;
                 }
-                errorMessage = await response.Content.ReadAsStringAsync();
+
+                var raw = await response.Content.ReadAsStringAsync();
+                errorMessage = TryParseApiMessage(raw) ?? "فشلت العملية، حاول مرة أخرى";
             }
             catch (Exception ex)
             {
@@ -67,6 +80,21 @@ namespace ERP_Clint.Pages.Inventory.Stock
             {
                 isSaving = false;
             }
+        }
+
+        private static string? TryParseApiMessage(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("Message", out var msg))
+                    return msg.GetString();
+                if (doc.RootElement.TryGetProperty("message", out var msg2))
+                    return msg2.GetString();
+            }
+            catch { }
+            return raw.Length > 200 ? null : raw.Trim('"');
         }
 
         private async Task Close()

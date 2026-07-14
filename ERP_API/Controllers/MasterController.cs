@@ -5,6 +5,7 @@ using Infrastructure.Cache;
 using Infrastructure.JWT;
 using Infrastructure.ORM;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace SecondApi.Controllers
 {
@@ -42,6 +43,8 @@ namespace SecondApi.Controllers
             }
             set
             {
+                if (_UserId == 0)
+                    throw new InvalidOperationException("يجب تحديد معرف المستخدم قبل تحديث الذاكرة المؤقتة");
                 _cache.Set("User" + _UserId, value);
             }
         }
@@ -58,6 +61,14 @@ namespace SecondApi.Controllers
         }
         protected void GetUserId()
         {
+            var idClaim = User?.FindFirst("ID")?.Value
+                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(idClaim) && int.TryParse(idClaim, out var claimUserId) && claimUserId > 0)
+            {
+                _UserId = claimUserId;
+                return;
+            }
+
             var token = HttpContext.Request.Cookies["AuthToken"];
             if (string.IsNullOrEmpty(token))
                 throw new UnauthorizedAccessException("يجب تسجيل الدخول أولاً");

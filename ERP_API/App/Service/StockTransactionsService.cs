@@ -18,14 +18,16 @@ namespace ERP_API.App.Service
 
         public async Task<List<StockTransactionDto>> GetStockTransactionsAsync()
         {
-            List<StockTransactionDto> list = await _context.StockTransactions
-                .OrderByDescending(s => s.CreateDate)
-                .Take(500)
-                .Select(s => new StockTransactionDto
+            List<StockTransactionDto> list = await (
+                from s in _context.StockTransactions
+                join p in _context.Products.IgnoreQueryFilters() on s.ProductId equals p.Id into productJoin
+                from p in productJoin.DefaultIfEmpty()
+                orderby s.CreateDate descending
+                select new StockTransactionDto
                 {
                     Id = s.Id,
                     ProductId = s.ProductId,
-                    ProductName = _context.Products.FirstOrDefault(p => p.Id == s.ProductId)!.Name??"المنتج محذوف",
+                    ProductName = p != null ? p.Name : "المنتج محذوف",
                     Quantity = s.Quantity,
                     TransactionType = s.TransactionType,
                     ReferenceId = s.ReferenceId,
@@ -33,6 +35,7 @@ namespace ERP_API.App.Service
                     CreateDate = s.CreateDate,
                     CreateUserId = s.CreateUserId
                 })
+                .Take(500)
                 .ToListAsync();
             return list;
         }
@@ -43,28 +46,43 @@ namespace ERP_API.App.Service
         }
         public async Task AddStockTransaction(CreateStockTransactionsModel Model, int userId)
         {
+            if (Model.Quantity <= 0)
+                throw new InvalidOperationException("الكمية يجب أن تكون أكبر من صفر");
+
+            var transactionType = (Model.TransactionType ?? string.Empty).Trim();
+            if (transactionType is not ("In" or "Out"))
+                throw new InvalidOperationException("نوع الفاتورة غير صحيح");
+
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 Product? product = await GetProductAsync(Model.ProductId);
                 if (product == null) throw new KeyNotFoundException("لم يتم العثور على المنتج");
-                if (Model.TransactionType == "Out")
+
+                if (transactionType == "Out")
                 {
                     if (Model.Quantity > product.CurrentStock)
                         throw new InvalidOperationException("الكمية الموجودة في الخزن اقل من الكمية الصادرة");
                     product.CurrentStock -= Model.Quantity;
                 }
-                else if (Model.TransactionType == "In")
+                else
+                {
                     product.CurrentStock += Model.Quantity;
-                else throw new InvalidOperationException("نوع الفاتورة غير صحيح");
+                }
 
                 StockTransactions stockTransactions = _mapper.Map<StockTransactions>(Model);
+                stockTransactions.TransactionType = transactionType;
                 stockTransactions.CreateDate = DateTime.UtcNow.AddHours(3);
                 stockTransactions.CreateUserId = userId;
                 _context.Products.Entry(product).State = EntityState.Modified;
                 _context.StockTransactions.Add(stockTransactions);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await transaction.RollbackAsync();
+                throw new InvalidOperationException("تم تعديل المخزون من عملية أخرى، أعد المحاولة");
             }
             catch
             {

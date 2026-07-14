@@ -33,6 +33,8 @@ namespace ERP_Clint.Pages.Inventory.Product
                    Name = EditingProduct.Name,
                    SKU = EditingProduct.SKU,
                    Price = EditingProduct.SellingPrice,
+                   CostPrice = EditingProduct.CostPrice,
+                   MinStockLevel = EditingProduct.MinStockLevel,
                    CategoryId = EditingProduct.CategoriesId,
                 };
             }

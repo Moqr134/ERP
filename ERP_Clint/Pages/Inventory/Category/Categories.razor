@@ -2,7 +2,6 @@
 @layout MainLayout
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
-@inject HttpClient Http
 @if (!isLoading && loadError is null)
 {
     <div class="kpi-grid">

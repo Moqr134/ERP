@@ -1,8 +1,8 @@
 using ERPDto.Suppliers;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using ERP_Clint.Service;
 
 namespace ERP_Clint.Service.InventoryService
 {
@@ -27,62 +27,37 @@ namespace ERP_Clint.Service.InventoryService
         {
             var json = JsonSerializer.Serialize(supplier);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/suppliers/AddSuppliers")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PostAsync("api/suppliers/AddSuppliers", content);
         }
 
         public async Task<HttpResponseMessage> DeleteSupplierAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Delete, $"api/suppliers/DeleteSuppliers/{id}");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.DeleteAsync($"api/suppliers/DeleteSuppliers/{id}");
         }
 
         public async Task<List<SuppliersDto>> GetAllSuppliersAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, "api/suppliers/GetAllSuppliers");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<List<SuppliersDto>>() ?? new List<SuppliersDto>();
-            }
-            return new List<SuppliersDto>();
+            var response = await _httpClient.GetAsync("api/suppliers/GetAllSuppliers");
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر تحميل الموردين", response.StatusCode);
+
+            return await response.Content.ReadFromJsonAsync<List<SuppliersDto>>() ?? new List<SuppliersDto>();
         }
 
         public async Task<SuppliersDto?> GetSupplierByIdAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"api/suppliers/GetSupplierById/{id}");
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<SuppliersDto>();
-            }
-            return null;
+            var response = await _httpClient.GetAsync($"api/suppliers/GetSupplierById/{id}");
+            if (!response.IsSuccessStatusCode)
+                throw new ApiRequestException("تعذر تحميل المورد", response.StatusCode);
+
+            return await response.Content.ReadFromJsonAsync<SuppliersDto>();
         }
 
         public async Task<HttpResponseMessage> UpdateSupplierAsync(SuppliersDto supplier)
         {
             var json = JsonSerializer.Serialize(supplier);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Put, "api/suppliers/EditSuppliers")
-            {
-                Content = content
-            };
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-            var response = await _httpClient.SendAsync(request);
-            return response;
+            return await _httpClient.PutAsync("api/suppliers/EditSuppliers", content);
         }
     }
 }

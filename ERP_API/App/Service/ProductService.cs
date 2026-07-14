@@ -2,7 +2,6 @@
 using ERP_API.App.IService;
 using ERP_API.Domin.CategoriesEntity;
 using ERP_API.Domin.ProductEntity;
-using ERP_API.Domin.UsersEntity;
 using ERP_API.Infrastructure.Services;
 using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
@@ -39,6 +38,33 @@ namespace ERP_API.App.Service
             Product? product = await _context.Products.FirstOrDefaultAsync(x=>x.Barcode == Barcode && !x.IsRemoved);
             return product;
         }
+
+        private static IQueryable<Product> ApplyProductFilters(IQueryable<Product> query, PageDto pageDto)
+        {
+            query = query.Where(x => !x.IsRemoved);
+
+            if (pageDto.CategoryId > 0)
+                query = query.Where(x => x.CategoriesId == pageDto.CategoryId);
+
+            if (!string.IsNullOrWhiteSpace(pageDto.SearchTerm))
+            {
+                var term = pageDto.SearchTerm.Trim();
+                query = query.Where(x =>
+                    x.Name.Contains(term)
+                    || x.Barcode.Contains(term)
+                    || x.SKU.Contains(term));
+            }
+
+            return query;
+        }
+
+        private static void NormalizePaging(PageDto pageDto)
+        {
+            if (pageDto.PageIndex < 1) pageDto.PageIndex = 1;
+            if (pageDto.PageSize < 1) pageDto.PageSize = 10;
+            if (pageDto.PageSize > 100) pageDto.PageSize = 100;
+        }
+
         public async Task CreateProduct(CreateProductModel product, int userId)
         {
             Categories? categories = await _context.Categories.FindAsync(product.CategoriesId);
@@ -54,6 +80,7 @@ namespace ERP_API.App.Service
             if (product.MinStockLevel < 0) throw new LogicException("اقل قيمه مخزونه لا يمن ان تكون في السالب");
             Newproduct = new Product();
             Newproduct = _mapper.Map<Product>(product);
+            // Opening stock must go through stock transactions for audit trail
             Newproduct.CurrentStock = 0;
             Newproduct.CreateDate = DateTime.UtcNow.AddHours(3);
             Newproduct.CreateUserId = userId;
@@ -72,8 +99,9 @@ namespace ERP_API.App.Service
         }
         public async Task<List<ProductDto>> GetAllProductsAsync(PageDto pageDto)
         {
-            List<ProductDto> products = await _context.Products
-                .Where(x => !x.IsRemoved)
+            NormalizePaging(pageDto);
+            List<ProductDto> products = await ApplyProductFilters(_context.Products.AsQueryable(), pageDto)
+                .OrderByDescending(x => x.Id)
                 .Skip((pageDto.PageIndex - 1) * pageDto.PageSize)
                 .Take(pageDto.PageSize)
                 .Select(x => new ProductDto
@@ -88,7 +116,6 @@ namespace ERP_API.App.Service
                     MinStockLevel = x.MinStockLevel,
                     CategoriesId = x.CategoriesId,
                 }).ToListAsync();
-            if (products == null) throw new KeyNotFoundException("المنتج غير موجود");
             return products;
         }
         public async Task<ProductDto> GetProductByIdAsync(int id)
@@ -119,27 +146,45 @@ namespace ERP_API.App.Service
                 if(categories == null) throw new KeyNotFoundException("الفئة غير موجوده");
                 UpdateProduct.CategoriesId = product.CategoryId;
             }
-            if(product.SKU != UpdateProduct.SKU && UpdateProduct.SKU != null)
+            if(!string.IsNullOrWhiteSpace(product.SKU) && product.SKU != UpdateProduct.SKU)
             {
                 Product? SKU = await GetProductBySKU(product.SKU);
                 if (SKU != null) throw new DuplicateException("هذا ال SKU مستخدم في منتج اخر");
                 UpdateProduct.SKU = product.SKU;
             }
-            if(product.Barcode != UpdateProduct.Barcode && UpdateProduct.Barcode != null)
+            if(!string.IsNullOrWhiteSpace(product.Barcode) && product.Barcode != UpdateProduct.Barcode)
             {
                 Product? Barcode = await GetProductByBarcode(product.Barcode);
                 if (Barcode != null) throw new DuplicateException("هذا الباركود مستخدم في منتج اخر");
                 UpdateProduct.Barcode = product.Barcode;
             }
-            if(UpdateProduct.Name != product.Name && UpdateProduct.Name != null)
+            if(!string.IsNullOrWhiteSpace(product.Name) && UpdateProduct.Name != product.Name)
             {
                 Product? Name = await GetProductByName(product.Name);
                 if (Name != null) throw new DuplicateException("هذا الاسم مستخدم في منتج اخر");
                 UpdateProduct.Name = product.Name;
             }
+
+            if (product.CostPrice.HasValue && product.CostPrice.Value < 0)
+                throw new LogicException("سعر الكلفة لا يمكن أن يكون سالباً");
+            if (product.Price < 0)
+                throw new LogicException("سعر البيع لا يمكن أن يكون سالباً");
+            if (product.MinStockLevel.HasValue && product.MinStockLevel.Value < 0)
+                throw new LogicException("اقل قيمة مخزونة لا يمكن أن تكون سالبة");
+
+            var newCost = product.CostPrice ?? UpdateProduct.CostPrice;
+            var newPrice = product.Price;
+            if (newCost > newPrice)
+                throw new LogicException("سعر البيع لا يمكن ان يكون اقل من سعر الكلفة");
+
             UpdateProduct.UpdateDate = DateTime.UtcNow.AddHours(3);
             UpdateProduct.UpdateUserId = userId;
-            UpdateProduct.SellingPrice = product.Price;
+            UpdateProduct.SellingPrice = newPrice;
+            if (product.CostPrice.HasValue)
+                UpdateProduct.CostPrice = product.CostPrice.Value;
+            if (product.MinStockLevel.HasValue)
+                UpdateProduct.MinStockLevel = product.MinStockLevel.Value;
+
             _context.Products.Entry(UpdateProduct).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }
@@ -174,18 +219,22 @@ namespace ERP_API.App.Service
                     MinStockLevel = x.MinStockLevel,
                     SellingPrice = x.SellingPrice,
                     SKU = x.SKU,
+                    CategoriesId = x.CategoriesId,
                 }).ToListAsync();
             return products;
         }
 
-        public async Task<ProductsInfo> GetProductsInfo()
+        public async Task<ProductsInfo> GetProductsInfo(PageDto pageDto)
         {
+            NormalizePaging(pageDto);
+            var filtered = ApplyProductFilters(_context.Products.AsQueryable(), pageDto);
+
             ProductsInfo productsInfo = new ProductsInfo();
-            productsInfo.TotalProducts = await _context.Products.CountAsync(p => !p.IsRemoved);
-            productsInfo.ProductsStockOut = await _context.Products.CountAsync(p => !p.IsRemoved && p.CurrentStock == 0);
-            productsInfo.ProductsCountLissMinStock = await _context.Products.CountAsync(p => !p.IsRemoved && p.CurrentStock < p.MinStockLevel);
-            productsInfo.ProductsCostCount = await _context.Products.Where(p => !p.IsRemoved && p.CurrentStock > 0).SumAsync(p => p.CostPrice * p.CurrentStock);
-            productsInfo.PageCount = (int)Math.Ceiling((double)productsInfo.TotalProducts / 10);
+            productsInfo.TotalProducts = await filtered.CountAsync();
+            productsInfo.ProductsStockOut = await filtered.CountAsync(p => p.CurrentStock == 0);
+            productsInfo.ProductsCountLissMinStock = await filtered.CountAsync(p => p.CurrentStock < p.MinStockLevel);
+            productsInfo.ProductsCostCount = await filtered.Where(p => p.CurrentStock > 0).SumAsync(p => (double?)(p.CostPrice * p.CurrentStock)) ?? 0;
+            productsInfo.PageCount = (int)Math.Ceiling((double)productsInfo.TotalProducts / pageDto.PageSize);
             return productsInfo;
         }
     }

@@ -13,7 +13,7 @@ namespace ERP_API.App.IService
         public Task UpdateProduct(UpdateProductModel product, int userId);
         public Task<List<ProductStockLadgerDto>> GetProductStockLedger(int id);
         public Task<List<ProductDto>> GetLowStockProduct();
-        public Task<ProductsInfo> GetProductsInfo();
+        public Task<ProductsInfo> GetProductsInfo(PageDto pageDto);
         public Task DeleteProduct(int id, int userId);
     }
 }
