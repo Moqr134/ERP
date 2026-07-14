@@ -59,6 +59,13 @@ public static class SystemPermissions
     public const string EditSuppliers = "EditSuppliers";
     public const string DeleteSuppliers = "DeleteSuppliers";
 
+    // Warehouses
+    public const string GetAllWarehouses = "GetAllWarehouses";
+    public const string GetWarehouseById = "GetWarehouseById";
+    public const string AddWarehouse = "AddWarehouse";
+    public const string EditWarehouse = "EditWarehouse";
+    public const string DeleteWarehouse = "DeleteWarehouse";
+
     // Stock
     public const string AddStockTransaction = "AddStockTransaction";
     public const string GetStockTransactions = "GetStockTransactions";
@@ -119,6 +126,12 @@ public static class SystemPermissions
         GetProductStockLedger,
         GetLowStockProduct,
         GetProductsInfo,
+
+        GetAllWarehouses,
+        GetWarehouseById,
+        AddWarehouse,
+        EditWarehouse,
+        DeleteWarehouse,
 
         GetAllSuppliers,
         GetSupplierById,

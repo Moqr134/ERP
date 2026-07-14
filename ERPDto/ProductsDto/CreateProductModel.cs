@@ -21,5 +21,6 @@ namespace ERPDto.ProductsDto
         public int CurrentStock { get; set; }
         public int MinStockLevel { get; set; }
         public int CategoriesId { get; set; }
+        public int? WarehouseId { get; set; }
     }
 }

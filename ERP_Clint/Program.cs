@@ -16,6 +16,7 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ICatigoryService, CatigoryService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISuppliersService, SuppliersService>();
+builder.Services.AddScoped<IWarehousesService, WarehousesService>();
 builder.Services.AddScoped<IStockTransactionsService, StockTransactionsService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();

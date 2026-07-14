@@ -3,6 +3,7 @@ using ERP_Clint.Service.InventoryService;
 using ERPDto.CategoriesDto;
 using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
+using ERPDto.WarehouseDto;
 using Microsoft.AspNetCore.Components;
 using System.Net;
 
@@ -13,9 +14,11 @@ namespace ERP_Clint.Pages.Inventory.Product
 
         private List<ProductDto> products = new();
         private List<CategoryDto> categories = new();
+        private List<WarehouseDto> warehouses = new();
         [Inject]
         private IProductService _productService {  get; set; } = default!;
         [Inject] private ICatigoryService _catigoryService { get; set; } = default!;
+        [Inject] private IWarehousesService _warehousesService { get; set; } = default!;
         private PageDto page = new PageDto();
         private string searchTerm = string.Empty;
         private ProductsInfo? productsInfo;
@@ -62,10 +65,12 @@ namespace ERP_Clint.Pages.Inventory.Product
                 var requst = _catigoryService.GetAllCategoriesAsync();
                 var productsRequest = _productService.GetAllProductsAsync(page);
                 var productsInfoRequest = _productService.GetProductsInfo(page);
-                await Task.WhenAll(requst, productsRequest, productsInfoRequest);
+                var warehousesRequest = LoadWarehousesSafeAsync();
+                await Task.WhenAll(requst, productsRequest, productsInfoRequest, warehousesRequest);
                 categories = await requst ?? new List<CategoryDto>();
                 products = await productsRequest ?? new List<ProductDto>();
                 productsInfo = await productsInfoRequest;
+                warehouses = await warehousesRequest;
                 if(productsInfo is null)
                 {
                     loadError = "تعذر تحميل بيانات معلومات المنتجات، تأكد من اتصالك وحاول مرة أخرى";
@@ -82,6 +87,20 @@ namespace ERP_Clint.Pages.Inventory.Product
             finally
             {
                 isLoading = false;
+            }
+        }
+
+        private async Task<List<WarehouseDto>> LoadWarehousesSafeAsync()
+        {
+            try
+            {
+                return await _warehousesService.GetAllWarehousesAsync();
+            }
+            catch
+            {
+                // Warehouse listing is optional for the product form;
+                // a user may lack GetAllWarehouses permission.
+                return new List<WarehouseDto>();
             }
         }
 
