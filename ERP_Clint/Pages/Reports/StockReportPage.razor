@@ -1,6 +1,8 @@
 @page "/reports/stock"
 @layout MainLayout
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
 @using ERP_Clint.Service
 @using ERP_Clint.Service.ReportsService
 @using ERPDto.ReportsDto
@@ -18,18 +20,13 @@
     </div>
 </div>
 
-<div class="report-nav">
-    <a class="report-nav__item" href="reports">الشامل</a>
-    <a class="report-nav__item" href="reports/sales">المبيعات</a>
-    <a class="report-nav__item" href="reports/products">المنتجات</a>
-    <a class="report-nav__item" href="reports/categories">الأصناف</a>
-    <a class="report-nav__item" href="reports/users">المستخدمون</a>
-    <a class="report-nav__item active" href="reports/stock">المخزون</a>
-</div>
+<ReportNav Active="stock" />
 
 <ReportFilters FromDate="fromDate" FromDateChanged="v => fromDate = v"
                ToDate="toDate" ToDateChanged="v => toDate = v"
-               OnApply="Load" IsBusy="isLoading" />
+               OnApply="Load" IsBusy="isLoading"
+               Title="فلترة حركات المخزون"
+               Hint="حدد فترة الدخول والخروج لعرض التحليل" />
 
 @if (isLoading)
 {

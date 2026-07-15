@@ -1,6 +1,7 @@
 @page "/reports/products"
 @layout MainLayout
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using ERP_Clint.Security
 @using ERP_Clint.Service
 @using ERP_Clint.Service.ReportsService
@@ -19,20 +20,13 @@
     </div>
 </div>
 
-<div class="report-nav">
-    <a class="report-nav__item" href="reports">الشامل</a>
-    <a class="report-nav__item" href="reports/sales">المبيعات</a>
-    <a class="report-nav__item active" href="reports/products">المنتجات</a>
-    <a class="report-nav__item" href="reports/categories">الأصناف</a>
-    <a class="report-nav__item" href="reports/users">المستخدمون</a>
-    <a class="report-nav__item" href="reports/stock">المخزون</a>
-</div>
+<ReportNav Active="products" />
 
-<div class="report-filters">
-    <div class="report-filters__actions">
-        <button class="btn-secondary" @onclick="Load" disabled="@isLoading">تحديث</button>
-    </div>
-</div>
+<ReportFilters ShowDateFilters="false"
+               OnApply="Load"
+               IsBusy="isLoading"
+               Title="بيانات المنتجات"
+               Hint="اضغط تحديث لإعادة جلب تقرير المخزون والقيمة" />
 
 @if (isLoading)
 {
@@ -42,7 +36,7 @@ else if (!string.IsNullOrEmpty(loadError))
 {
     <div class="state-box state-box--error">
         ⚠ @loadError
-        <button class="btn-secondary" @onclick="Load">إعادة المحاولة</button>
+        <button class="btn-secondary" @onclick="() => Load()">إعادة المحاولة</button>
     </div>
 }
 else if (report is not null)
@@ -120,7 +114,7 @@ else if (report is not null)
 
     protected override async Task OnInitializedAsync() => await Load();
 
-    private async Task Load()
+    private async Task Load(ReportFilterDto? _ = null)
     {
         isLoading = true;
         loadError = null;
