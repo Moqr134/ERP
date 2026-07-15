@@ -15,6 +15,10 @@ namespace ERP_API.Domin.SalesEntity
             builder.Property(x => x.ProductName).IsRequired().HasMaxLength(100);
             builder.Property(x => x.Barcode).HasMaxLength(50);
             builder.Property(x => x.Quantity).IsRequired();
+            builder.Property(x => x.BaseQuantity).IsRequired();
+            builder.Property(x => x.UnitName).IsRequired().HasMaxLength(50);
+            builder.Property(x => x.UnitFactor).IsRequired();
+            builder.Property(x => x.ProductUnitId);
             builder.Property(x => x.UnitPrice).IsRequired();
             builder.Property(x => x.LineTotal).IsRequired();
             builder.Property(x => x.CreateDate).IsRequired();

@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ERPDto.ProductsDto
+﻿namespace ERPDto.ProductsDto
 {
     public class ProductDto
     {
         public int Id { get; set; }
-        public string Barcode { get; set; }
-        public string Name { get; set; }
-        public string SKU { get; set; }
+        public string Barcode { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string SKU { get; set; } = string.Empty;
         public double CostPrice { get; set; }
         public double SellingPrice { get; set; }
         public int CurrentStock { get; set; }
@@ -19,5 +13,6 @@ namespace ERPDto.ProductsDto
         public int CategoriesId { get; set; }
         public int? WarehouseId { get; set; }
         public string? WarehouseName { get; set; }
+        public List<ProductUnitDto> Units { get; set; } = new();
     }
 }

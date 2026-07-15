@@ -168,10 +168,18 @@ namespace ERP_Clint.Pages.Inventory.Product
             await LoadAll();
         }
 
-        private void OpenEditModal(ProductDto product)
+        private async Task OpenEditModal(ProductDto product)
         {
-            productBeingEdited = product;
             categories = categories ?? new List<CategoryDto>();
+            try
+            {
+                var full = await _productService.GetProductByIdAsync(product.Id);
+                productBeingEdited = full ?? product;
+            }
+            catch
+            {
+                productBeingEdited = product;
+            }
             isModalOpen = true;
         }
 

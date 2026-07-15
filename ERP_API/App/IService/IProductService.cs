@@ -8,6 +8,7 @@ namespace ERP_API.App.IService
     {
         public Task<List<ProductDto>> GetAllProductsAsync(PageDto pageDto);
         public Task<Product?> GetProductByBarcode(string Barcode);
+        public Task<ProductLookupDto?> LookupByBarcodeAsync(string barcode);
         public Task<ProductDto> GetProductByIdAsync(int id);
         public Task CreateProduct(CreateProductModel product, int userId);
         public Task UpdateProduct(UpdateProductModel product, int userId);

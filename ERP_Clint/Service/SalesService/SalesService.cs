@@ -13,7 +13,7 @@ namespace ERP_Clint.Service.SalesService
         Task<SaleDto?> CompleteSaleAsync(CompleteSaleModel model);
         Task<SalesListResponse?> GetSalesAsync(PageDto page);
         Task<SaleDto?> GetSaleByIdAsync(int id);
-        Task<ProductDto?> LookupProductByBarcodeAsync(string barcode);
+        Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode);
         Task<List<ProductDto>?> SearchProductsAsync(string term);
     }
 
@@ -60,7 +60,7 @@ namespace ERP_Clint.Service.SalesService
             return await response.Content.ReadFromJsonAsync<SaleDto>();
         }
 
-        public async Task<ProductDto?> LookupProductByBarcodeAsync(string barcode)
+        public async Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode)
         {
             var encoded = Uri.EscapeDataString(barcode);
             var response = await _httpClient.GetAsync($"api/Sales/LookupProductByBarcode/{encoded}");
@@ -69,7 +69,7 @@ namespace ERP_Clint.Service.SalesService
             if (!response.IsSuccessStatusCode)
                 throw new ApiRequestException("تعذر البحث بالباركود", response.StatusCode);
 
-            return await response.Content.ReadFromJsonAsync<ProductDto>();
+            return await response.Content.ReadFromJsonAsync<ProductLookupDto>();
         }
 
         public async Task<List<ProductDto>?> SearchProductsAsync(string term)

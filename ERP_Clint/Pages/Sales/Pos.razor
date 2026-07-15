@@ -43,18 +43,34 @@
                 <div class="pos__results">
                     @foreach (var p in searchResults)
                     {
-                        <button type="button" class="pos__result" @onclick="() => AddProduct(p)">
+                        var defaultUnit = GetDefaultUnit(p);
+                        <button type="button" class="pos__result" @onclick="() => AddFromSearch(p, defaultUnit)">
                             <div class="pos__result-main">
                                 <strong>@p.Name</strong>
                                 <span class="mono">@p.Barcode</span>
+                                @if (p.Units.Count > 1)
+                                {
+                                    <span class="pos__unit-hint">وحدات: @string.Join(" · ", p.Units.Select(u => u.Name))</span>
+                                }
                             </div>
                             <div class="pos__result-meta">
-                                <span>@p.SellingPrice.ToString("N0")</span>
+                                <span>@((defaultUnit?.SellingPrice ?? p.SellingPrice).ToString("N0"))</span>
                                 <span class="@(p.CurrentStock <= 0 ? "stock-out" : p.CurrentStock <= p.MinStockLevel ? "stock-low" : "")">
-                                    مخزون: @p.CurrentStock
+                                    مخزون: @p.CurrentStock مفرد
                                 </span>
                             </div>
                         </button>
+                        @if (p.Units.Count > 1)
+                        {
+                            <div class="pos__unit-picks">
+                                @foreach (var u in p.Units)
+                                {
+                                    <button type="button" class="pos__unit-pick" @onclick="() => AddFromSearch(p, u)" disabled="@isBusy">
+                                        @u.Name ×@u.Factor — @u.SellingPrice.ToString("N0")
+                                    </button>
+                                }
+                            </div>
+                        }
                     }
                 </div>
             }
@@ -88,15 +104,15 @@
                             {
                                 <tr>
                                     <td>
-                                        <div class="pos__line-name">@line.Name</div>
+                                        <div class="pos__line-name">@line.Name <span class="pos__unit-tag">@line.UnitName</span></div>
                                         <div class="mono pos__line-code">@line.Barcode</div>
-                                        <div class="pos__line-stock">متاح: @line.AvailableStock</div>
+                                        <div class="pos__line-stock">متاح: @line.AvailablePackages @line.UnitName (@line.BaseStock مفرد)</div>
                                     </td>
                                     <td class="mono">@line.UnitPrice.ToString("N0")</td>
                                     <td>
                                         <div class="pos__qty">
                                             <button type="button" @onclick="() => ChangeQty(line, -1)" disabled="@isBusy">−</button>
-                                            <input type="number" min="1" max="@line.AvailableStock" value="@line.Quantity"
+                                            <input type="number" min="1" max="@line.AvailablePackages" value="@line.Quantity"
                                                    @onchange="e => SetQty(line, e)" disabled="@isBusy" />
                                             <button type="button" @onclick="() => ChangeQty(line, 1)" disabled="@isBusy">+</button>
                                         </div>
@@ -305,6 +321,18 @@
 
     .pos__result-main { display: flex; flex-direction: column; gap: 2px; }
     .pos__result-main span, .pos__line-code { font-size: 12px; color: rgba(255,255,255,0.45); }
+    .pos__unit-hint { color: rgba(251,146,60,0.85) !important; font-size: 11px !important; }
+    .pos__unit-picks { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding-right: 8px; }
+    .pos__unit-pick {
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+        color: rgba(255,255,255,0.75); border-radius: 8px; padding: 6px 10px;
+        font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .pos__unit-pick:hover { border-color: rgba(249,115,22,0.45); color: #fff; background: rgba(249,115,22,0.1); }
+    .pos__unit-tag {
+        display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px;
+        background: rgba(249,115,22,0.15); color: #fdba74; font-size: 11px; font-weight: 700;
+    }
     .pos__result-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13px; font-weight: 700; }
     .stock-low { color: #fbbf24; }
     .stock-out { color: #f87171; }
@@ -553,11 +581,15 @@
     private sealed class CartLine
     {
         public int ProductId { get; set; }
+        public int UnitId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string UnitName { get; set; } = "مفرد";
+        public int UnitFactor { get; set; } = 1;
         public string? Barcode { get; set; }
         public double UnitPrice { get; set; }
         public int Quantity { get; set; }
-        public int AvailableStock { get; set; }
+        public int BaseStock { get; set; }
+        public int AvailablePackages => UnitFactor <= 0 ? 0 : BaseStock / UnitFactor;
         public double LineTotal => Math.Round(UnitPrice * Quantity, MidpointRounding.AwayFromZero);
     }
 
@@ -584,6 +616,11 @@
 
     private IReadOnlyList<double> CashSuggestions =>
         Total <= 0 ? Array.Empty<double>() : IraqiCurrency.SuggestCashPayments(Total);
+
+    private static ProductUnitDto? GetDefaultUnit(ProductDto product)
+        => product.Units.FirstOrDefault(u => u.IsDefaultForSale)
+           ?? product.Units.FirstOrDefault(u => u.IsBase)
+           ?? product.Units.FirstOrDefault();
 
     private void SyncPaidWithTotal()
     {
@@ -620,14 +657,13 @@
             return;
         }
 
-        // Prefer exact barcode match first (scanner workflow)
         try
         {
             isSearching = true;
             var byBarcode = await SalesService.LookupProductByBarcodeAsync(term);
             if (byBarcode is not null)
             {
-                AddProduct(byBarcode);
+                AddLookup(byBarcode);
                 scanInput = string.Empty;
                 searchResults = new();
                 return;
@@ -675,38 +711,84 @@
         }
     }
 
-    private void AddProduct(ProductDto product)
+    private void AddLookup(ProductLookupDto lookup)
+    {
+        AddToCart(
+            productId: lookup.ProductId,
+            unitId: lookup.UnitId,
+            name: lookup.Name,
+            unitName: lookup.UnitName,
+            unitFactor: Math.Max(1, lookup.UnitFactor),
+            barcode: lookup.Barcode,
+            unitPrice: lookup.UnitPrice,
+            baseStock: lookup.CurrentStock);
+    }
+
+    private void AddFromSearch(ProductDto product, ProductUnitDto? unit)
+    {
+        unit ??= GetDefaultUnit(product);
+        var factor = Math.Max(1, unit?.Factor ?? 1);
+        var price = unit?.SellingPrice ?? product.SellingPrice;
+        var barcode = unit?.Barcodes.FirstOrDefault(b => b.IsPrimary)?.Barcode
+            ?? unit?.Barcodes.FirstOrDefault()?.Barcode
+            ?? product.Barcode;
+
+        AddToCart(
+            productId: product.Id,
+            unitId: unit?.Id ?? 0,
+            name: product.Name,
+            unitName: unit?.Name ?? "مفرد",
+            unitFactor: factor,
+            barcode: barcode,
+            unitPrice: price,
+            baseStock: product.CurrentStock);
+    }
+
+    private void AddToCart(
+        int productId,
+        int unitId,
+        string name,
+        string unitName,
+        int unitFactor,
+        string? barcode,
+        double unitPrice,
+        int baseStock)
     {
         scanError = null;
         successMessage = null;
         checkoutError = null;
 
-        if (product.CurrentStock <= 0)
+        var available = unitFactor <= 0 ? 0 : baseStock / unitFactor;
+        if (available <= 0)
         {
-            scanError = $"المنتج «{product.Name}» غير متوفر في المخزون";
+            scanError = $"المنتج «{name}» غير متوفر بوحدة {unitName}";
             return;
         }
 
-        var existing = cart.FirstOrDefault(c => c.ProductId == product.Id);
+        var existing = cart.FirstOrDefault(c => c.ProductId == productId && c.UnitId == unitId);
         if (existing is not null)
         {
-            if (existing.Quantity >= existing.AvailableStock)
+            if (existing.Quantity >= existing.AvailablePackages)
             {
                 scanError = "لا يمكن تجاوز الكمية المتوفرة";
                 return;
             }
             existing.Quantity += 1;
+            existing.BaseStock = baseStock;
         }
         else
         {
             cart.Add(new CartLine
             {
-                ProductId = product.Id,
-                Name = product.Name,
-                Barcode = product.Barcode,
-                UnitPrice = product.SellingPrice,
+                ProductId = productId,
+                UnitId = unitId,
+                Name = name,
+                UnitName = unitName,
+                UnitFactor = unitFactor,
+                Barcode = barcode,
+                UnitPrice = unitPrice,
                 Quantity = 1,
-                AvailableStock = product.CurrentStock
+                BaseStock = baseStock
             });
         }
 
@@ -724,7 +806,7 @@
             SyncPaidWithTotal();
             return;
         }
-        if (next > line.AvailableStock)
+        if (next > line.AvailablePackages)
         {
             scanError = "لا يمكن تجاوز الكمية المتوفرة";
             return;
@@ -738,8 +820,8 @@
     {
         if (!int.TryParse(e.Value?.ToString(), out var qty) || qty < 1)
             qty = 1;
-        if (qty > line.AvailableStock)
-            qty = line.AvailableStock;
+        if (qty > line.AvailablePackages)
+            qty = line.AvailablePackages;
         line.Quantity = qty;
         SyncPaidWithTotal();
     }
@@ -801,8 +883,10 @@
                 Lines = cart.Select(c => new CompleteSaleLineDto
                 {
                     ProductId = c.ProductId,
+                    ProductUnitId = c.UnitId > 0 ? c.UnitId : null,
                     Quantity = c.Quantity,
-                    UnitPrice = c.UnitPrice
+                    UnitPrice = c.UnitPrice,
+                    Barcode = c.Barcode
                 }).ToList()
             };
 

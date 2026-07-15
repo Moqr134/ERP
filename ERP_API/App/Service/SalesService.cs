@@ -16,22 +16,16 @@ namespace ERP_API.App.Service
 {
     public class SalesService : MasterService, IScopped, ISalesService
     {
-        public SalesService(DBContext context, IMapper mapper) : base(context, mapper)
+        private readonly IProductService _productService;
+
+        public SalesService(DBContext context, IMapper mapper, IProductService productService)
+            : base(context, mapper)
         {
+            _productService = productService;
         }
 
-        public async Task<ProductDto?> LookupProductByBarcodeAsync(string barcode)
-        {
-            if (string.IsNullOrWhiteSpace(barcode))
-                return null;
-
-            var term = barcode.Trim();
-            var product = await _context.Products
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Barcode == term && !p.IsRemoved);
-
-            return product is null ? null : MapProduct(product);
-        }
+        public async Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode)
+            => await _productService.LookupByBarcodeAsync(barcode);
 
         public async Task<List<ProductDto>> SearchProductsAsync(string term, int take = 12)
         {
@@ -41,12 +35,13 @@ namespace ERP_API.App.Service
             take = take is < 1 ? 12 : take > 30 ? 30 : take;
             var q = term.Trim();
 
-            return await _context.Products
+            var products = await _context.Products
                 .AsNoTracking()
                 .Where(p => !p.IsRemoved && (
                     p.Name.Contains(q)
                     || p.Barcode.Contains(q)
-                    || p.SKU.Contains(q)))
+                    || p.SKU.Contains(q)
+                    || p.Barcodes.Any(b => !b.IsRemoved && b.Barcode.Contains(q))))
                 .OrderBy(p => p.Name)
                 .Take(take)
                 .Select(p => new ProductDto
@@ -59,9 +54,50 @@ namespace ERP_API.App.Service
                     SellingPrice = p.SellingPrice,
                     CurrentStock = p.CurrentStock,
                     MinStockLevel = p.MinStockLevel,
-                    CategoriesId = p.CategoriesId
+                    CategoriesId = p.CategoriesId,
+                    WarehouseId = p.WarehouseId
                 })
                 .ToListAsync();
+
+            var ids = products.Select(p => p.Id).ToList();
+            if (ids.Count == 0)
+                return products;
+
+            var units = await _context.ProductUnits
+                .AsNoTracking()
+                .Where(u => ids.Contains(u.ProductId) && !u.IsRemoved)
+                .OrderBy(u => u.SortOrder)
+                .Select(u => new
+                {
+                    u.ProductId,
+                    Unit = new ProductUnitDto
+                    {
+                        Id = u.Id,
+                        Name = u.Name,
+                        Factor = u.Factor,
+                        SellingPrice = u.SellingPrice,
+                        IsBase = u.IsBase,
+                        IsDefaultForSale = u.IsDefaultForSale,
+                        SortOrder = u.SortOrder,
+                        Barcodes = u.Barcodes.Where(b => !b.IsRemoved)
+                            .OrderByDescending(b => b.IsPrimary)
+                            .Select(b => new ProductBarcodeDto
+                            {
+                                Id = b.Id,
+                                Barcode = b.Barcode,
+                                IsPrimary = b.IsPrimary
+                            }).ToList()
+                    }
+                })
+                .ToListAsync();
+
+            var byProduct = units.GroupBy(x => x.ProductId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Unit).ToList());
+
+            foreach (var p in products)
+                p.Units = byProduct.TryGetValue(p.Id, out var list) ? list : new();
+
+            return products;
         }
 
         public async Task<SaleDto> CompleteSaleAsync(CompleteSaleModel model, int userId)
@@ -73,13 +109,16 @@ namespace ERP_API.App.Service
             if (paymentMethod is not ("Cash" or "Card"))
                 throw new InvalidOperationException("طريقة الدفع غير صحيحة");
 
+            // Merge by product + packaging unit
             var mergedLines = model.Lines
-                .GroupBy(l => l.ProductId)
+                .GroupBy(l => new { l.ProductId, UnitId = l.ProductUnitId ?? 0 })
                 .Select(g => new CompleteSaleLineDto
                 {
-                    ProductId = g.Key,
+                    ProductId = g.Key.ProductId,
+                    ProductUnitId = g.Key.UnitId == 0 ? null : g.Key.UnitId,
                     Quantity = g.Sum(x => x.Quantity),
-                    UnitPrice = g.LastOrDefault(x => x.UnitPrice is > 0)?.UnitPrice
+                    UnitPrice = g.LastOrDefault(x => x.UnitPrice is > 0)?.UnitPrice,
+                    Barcode = g.Select(x => x.Barcode).FirstOrDefault(b => !string.IsNullOrWhiteSpace(b))
                 })
                 .ToList();
 
@@ -94,6 +133,8 @@ namespace ERP_API.App.Service
             {
                 var productIds = mergedLines.Select(l => l.ProductId).Distinct().ToList();
                 var products = await _context.Products
+                    .Include(p => p.Units.Where(u => !u.IsRemoved))
+                        .ThenInclude(u => u.Barcodes.Where(b => !b.IsRemoved))
                     .Where(p => productIds.Contains(p.Id) && !p.IsRemoved)
                     .ToListAsync();
 
@@ -104,44 +145,70 @@ namespace ERP_API.App.Service
                 var now = DateTime.UtcNow.AddHours(3);
                 var invoiceNumber = await GenerateInvoiceNumberAsync(now);
 
-                var saleLines = new List<SaleLine>();
-                double subTotal = 0;
+                // Aggregate base-unit deductions per product for a single stock check
+                var baseNeeded = new Dictionary<int, int>();
+                var resolved = new List<(CompleteSaleLineDto Line, Product Product, ProductUnit Unit, int BaseQty, double UnitPrice, double LineTotal)>();
 
                 foreach (var line in mergedLines)
                 {
                     var product = productMap[line.ProductId];
-                    if (line.Quantity > product.CurrentStock)
-                        throw new InvalidOperationException($"المخزون غير كافٍ للمنتج: {product.Name}");
+                    var unit = ResolveUnit(product, line.ProductUnitId);
 
-                    var unitPrice = line.UnitPrice is > 0 ? line.UnitPrice.Value : product.SellingPrice;
+                    var baseQty = checked(line.Quantity * unit.Factor);
+                    baseNeeded[product.Id] = baseNeeded.GetValueOrDefault(product.Id) + baseQty;
+
+                    var unitPrice = line.UnitPrice is > 0 ? line.UnitPrice.Value : unit.SellingPrice;
                     if (unitPrice < 0)
                         throw new InvalidOperationException("سعر البيع غير صحيح");
 
                     var lineTotal = Math.Round(unitPrice * line.Quantity, MidpointRounding.AwayFromZero);
-                    subTotal += lineTotal;
+                    resolved.Add((line, product, unit, baseQty, unitPrice, lineTotal));
+                }
 
-                    product.CurrentStock -= line.Quantity;
-                    _context.Products.Entry(product).State = EntityState.Modified;
+                foreach (var (productId, needed) in baseNeeded)
+                {
+                    var product = productMap[productId];
+                    if (needed > product.CurrentStock)
+                        throw new InvalidOperationException($"المخزون غير كافٍ للمنتج: {product.Name}");
+                }
+
+                var saleLines = new List<SaleLine>();
+                double subTotal = 0;
+
+                foreach (var item in resolved)
+                {
+                    subTotal += item.LineTotal;
+                    item.Product.CurrentStock -= item.BaseQty;
+                    _context.Products.Entry(item.Product).State = EntityState.Modified;
+
+                    var barcode = !string.IsNullOrWhiteSpace(item.Line.Barcode)
+                        ? item.Line.Barcode
+                        : item.Unit.Barcodes.FirstOrDefault(b => b.IsPrimary)?.Barcode
+                          ?? item.Product.Barcode;
 
                     saleLines.Add(new SaleLine
                     {
-                        ProductId = product.Id,
-                        ProductName = product.Name,
-                        Barcode = product.Barcode,
-                        Quantity = line.Quantity,
-                        UnitPrice = unitPrice,
-                        LineTotal = lineTotal,
+                        ProductId = item.Product.Id,
+                        ProductName = item.Product.Name,
+                        Barcode = barcode,
+                        Quantity = item.Line.Quantity,
+                        BaseQuantity = item.BaseQty,
+                        UnitName = item.Unit.Name,
+                        UnitFactor = item.Unit.Factor,
+                        ProductUnitId = item.Unit.Id > 0 ? item.Unit.Id : null,
+                        UnitPrice = item.UnitPrice,
+                        LineTotal = item.LineTotal,
                         CreateDate = now,
                         CreateUserId = userId
                     });
 
                     _context.StockTransactions.Add(new StockTransactions
                     {
-                        ProductId = product.Id,
-                        Quantity = line.Quantity,
+                        ProductId = item.Product.Id,
+                        Quantity = item.BaseQty,
                         TransactionType = "Out",
                         ReferenceId = invoiceNumber,
-                        Notes = "بيع مباشر POS",
+                        Notes = $"بيع مباشر POS ({item.Unit.Name})",
                         CreateDate = now,
                         CreateUserId = userId
                     });
@@ -250,6 +317,30 @@ namespace ERP_API.App.Service
             return MapSale(sale);
         }
 
+        private static ProductUnit ResolveUnit(Product product, int? productUnitId)
+        {
+            if (productUnitId is > 0)
+            {
+                var unit = product.Units.FirstOrDefault(u => u.Id == productUnitId.Value && !u.IsRemoved);
+                if (unit is null)
+                    throw new KeyNotFoundException("وحدة البيع غير موجودة للمنتج");
+                return unit;
+            }
+
+            return product.Units.FirstOrDefault(u => u.IsDefaultForSale && !u.IsRemoved)
+                ?? product.Units.FirstOrDefault(u => u.IsBase && !u.IsRemoved)
+                ?? product.Units.FirstOrDefault(u => !u.IsRemoved)
+                ?? new ProductUnit
+                {
+                    Id = 0,
+                    Name = "مفرد",
+                    Factor = 1,
+                    SellingPrice = product.SellingPrice,
+                    IsBase = true,
+                    IsDefaultForSale = true
+                };
+        }
+
         private async Task<string> GenerateInvoiceNumberAsync(DateTime now)
         {
             var prefix = $"POS-{now:yyyyMMdd}-";
@@ -269,19 +360,6 @@ namespace ERP_API.App.Service
 
             return $"{prefix}{seq:D4}";
         }
-
-        private static ProductDto MapProduct(Product product) => new()
-        {
-            Id = product.Id,
-            Barcode = product.Barcode,
-            Name = product.Name,
-            SKU = product.SKU,
-            CostPrice = product.CostPrice,
-            SellingPrice = product.SellingPrice,
-            CurrentStock = product.CurrentStock,
-            MinStockLevel = product.MinStockLevel,
-            CategoriesId = product.CategoriesId
-        };
 
         private static SaleDto MapSale(Sale sale) => new()
         {
@@ -306,6 +384,10 @@ namespace ERP_API.App.Service
                     ProductName = l.ProductName,
                     Barcode = l.Barcode,
                     Quantity = l.Quantity,
+                    BaseQuantity = l.BaseQuantity > 0 ? l.BaseQuantity : l.Quantity,
+                    UnitName = string.IsNullOrWhiteSpace(l.UnitName) ? "مفرد" : l.UnitName,
+                    UnitFactor = l.UnitFactor <= 0 ? 1 : l.UnitFactor,
+                    ProductUnitId = l.ProductUnitId,
                     UnitPrice = l.UnitPrice,
                     LineTotal = l.LineTotal
                 })

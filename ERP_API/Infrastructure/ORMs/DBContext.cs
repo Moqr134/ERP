@@ -23,6 +23,8 @@ public class DBContext : DbContext
         modelBuilder.ApplyConfiguration(new UserMap());
         modelBuilder.ApplyConfiguration(new CategoriesMap());
         modelBuilder.ApplyConfiguration(new ProductMap());
+        modelBuilder.ApplyConfiguration(new ProductUnitMap());
+        modelBuilder.ApplyConfiguration(new ProductBarcodeMap());
         modelBuilder.ApplyConfiguration(new RoleMap());
         modelBuilder.ApplyConfiguration(new PermissionsMap());
         modelBuilder.ApplyConfiguration(new StockTransactionsMap());
@@ -37,6 +39,8 @@ public class DBContext : DbContext
     public DbSet<Users> Users { get; set; }
     public DbSet<Categories> Categories { get; set; }
     public DbSet<Product> Products { get; set; }
+    public DbSet<ProductUnit> ProductUnits { get; set; }
+    public DbSet<ProductBarcode> ProductBarcodes { get; set; }
     public DbSet<StockTransactions> StockTransactions { get; set; }
     public DbSet<UserRoles> UserRoles { get; set; }
     public DbSet<UserPermissions> UserPermissions { get; set; }

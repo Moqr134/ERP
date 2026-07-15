@@ -7,12 +7,18 @@ namespace ERPDto.SalesDto
         [Range(1, int.MaxValue)]
         public int ProductId { get; set; }
 
+        /// <summary>Optional. When set, uses that packaging unit; otherwise base/default unit.</summary>
+        public int? ProductUnitId { get; set; }
+
+        /// <summary>Quantity in the selected unit (cartons, pieces…).</summary>
         [Range(1, int.MaxValue)]
         public int Quantity { get; set; }
 
-        /// <summary>Optional override; server uses product SellingPrice if null/0.</summary>
+        /// <summary>Optional override; server uses unit SellingPrice if null/0.</summary>
         [Range(0, double.MaxValue)]
         public double? UnitPrice { get; set; }
+
+        public string? Barcode { get; set; }
     }
 
     public class CompleteSaleModel
@@ -41,6 +47,10 @@ namespace ERPDto.SalesDto
         public string ProductName { get; set; } = string.Empty;
         public string? Barcode { get; set; }
         public int Quantity { get; set; }
+        public int BaseQuantity { get; set; }
+        public string UnitName { get; set; } = "مفرد";
+        public int UnitFactor { get; set; } = 1;
+        public int? ProductUnitId { get; set; }
         public double UnitPrice { get; set; }
         public double LineTotal { get; set; }
     }
