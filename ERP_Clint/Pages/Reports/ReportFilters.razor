@@ -1,27 +1,65 @@
 @namespace ERP_Clint.Pages.Reports
 @using ERPDto.ReportsDto
 
-<div class="report-filters">
-    <div class="report-filters__field">
-        <label>من تاريخ</label>
-        <InputDate class="form-control" @bind-Value="FromDate" />
-    </div>
-    <div class="report-filters__field">
-        <label>إلى تاريخ</label>
-        <InputDate class="form-control" @bind-Value="ToDate" />
-    </div>
-    <div class="report-filters__actions">
-        <button class="btn-primary" @onclick="Apply" disabled="@IsBusy">تطبيق</button>
-        <button class="btn-secondary" @onclick="Reset" disabled="@IsBusy">إعادة تعيين</button>
-        @if (ShowQuickRanges)
+<div class="report-filters @(ShowDateFilters ? "" : "report-filters--simple")">
+    <div class="report-filters__intro">
+        <h3>@Title</h3>
+        @if (!string.IsNullOrWhiteSpace(Hint))
         {
-            <button class="btn-secondary" @onclick="() => SetRange(7)" disabled="@IsBusy">7 أيام</button>
-            <button class="btn-secondary" @onclick="() => SetRange(30)" disabled="@IsBusy">30 يوم</button>
+            <p>@Hint</p>
         }
+    </div>
+
+    <div class="report-filters__body">
+        @if (ShowDateFilters)
+        {
+            <div class="report-filters__fields">
+                <div class="report-filters__field">
+                    <label for="@fromId">من تاريخ</label>
+                    <InputDate id="@fromId" class="form-input" @bind-Value="FromDate" />
+                </div>
+                <div class="report-filters__field">
+                    <label for="@toId">إلى تاريخ</label>
+                    <InputDate id="@toId" class="form-input" @bind-Value="ToDate" />
+                </div>
+            </div>
+
+            @if (ShowQuickRanges)
+            {
+                <div class="report-filters__chips" role="group" aria-label="فترات سريعة">
+                    <button type="button"
+                            class="report-chip @(activeDays == 7 ? "active" : null)"
+                            @onclick="() => SetRange(7)"
+                            disabled="@IsBusy">7 أيام</button>
+                    <button type="button"
+                            class="report-chip @(activeDays == 30 ? "active" : null)"
+                            @onclick="() => SetRange(30)"
+                            disabled="@IsBusy">30 يوم</button>
+                    <button type="button"
+                            class="report-chip @(activeDays == 90 ? "active" : null)"
+                            @onclick="() => SetRange(90)"
+                            disabled="@IsBusy">90 يوم</button>
+                </div>
+            }
+        }
+
+        <div class="report-filters__actions">
+            <button type="button" class="btn-primary" @onclick="Apply" disabled="@IsBusy">
+                @(IsBusy ? "جاري التحميل..." : ActionLabel)
+            </button>
+            @if (ShowDateFilters)
+            {
+                <button type="button" class="btn-secondary" @onclick="Reset" disabled="@IsBusy">إعادة تعيين</button>
+            }
+        </div>
     </div>
 </div>
 
 @code {
+    private readonly string fromId = $"rf-from-{Guid.NewGuid():N}";
+    private readonly string toId = $"rf-to-{Guid.NewGuid():N}";
+    private int? activeDays;
+
     [Parameter] public DateTime? FromDate { get; set; }
     [Parameter] public EventCallback<DateTime?> FromDateChanged { get; set; }
     [Parameter] public DateTime? ToDate { get; set; }
@@ -29,6 +67,31 @@
     [Parameter] public EventCallback<ReportFilterDto> OnApply { get; set; }
     [Parameter] public bool IsBusy { get; set; }
     [Parameter] public bool ShowQuickRanges { get; set; } = true;
+    [Parameter] public bool ShowDateFilters { get; set; } = true;
+    [Parameter] public string Title { get; set; } = "فلترة التقرير";
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public string? PrimaryActionLabel { get; set; }
+
+    private string ActionLabel =>
+        !string.IsNullOrWhiteSpace(PrimaryActionLabel)
+            ? PrimaryActionLabel!
+            : ShowDateFilters ? "تطبيق" : "تحديث";
+
+    protected override void OnParametersSet() => SyncActiveDays();
+
+    private void SyncActiveDays()
+    {
+        if (FromDate is null || ToDate is null)
+        {
+            activeDays = null;
+            return;
+        }
+
+        var span = (ToDate.Value.Date - FromDate.Value.Date).Days + 1;
+        activeDays = span is 7 or 30 or 90 && ToDate.Value.Date == DateTime.Today
+            ? span
+            : null;
+    }
 
     private async Task Apply()
     {
@@ -46,6 +109,7 @@
     {
         FromDate = null;
         ToDate = null;
+        activeDays = null;
         await FromDateChanged.InvokeAsync(null);
         await ToDateChanged.InvokeAsync(null);
         await OnApply.InvokeAsync(new ReportFilterDto { Top = 10 });
@@ -55,6 +119,7 @@
     {
         ToDate = DateTime.Today;
         FromDate = DateTime.Today.AddDays(-(days - 1));
+        activeDays = days;
         await Apply();
     }
 }

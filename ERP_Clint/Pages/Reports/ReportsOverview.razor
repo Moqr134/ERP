@@ -20,44 +20,16 @@
     </div>
 </div>
 
-<div class="report-nav">
-    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview)">
-        <Authorized>
-            <a class="report-nav__item active" href="reports">الشامل</a>
-        </Authorized>
-    </AuthorizeView>
-    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetSalesReport)">
-        <Authorized>
-            <a class="report-nav__item" href="reports/sales">المبيعات</a>
-        </Authorized>
-    </AuthorizeView>
-    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetProductsReport)">
-        <Authorized>
-            <a class="report-nav__item" href="reports/products">المنتجات</a>
-        </Authorized>
-    </AuthorizeView>
-    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetCategoriesReport)">
-        <Authorized>
-            <a class="report-nav__item" href="reports/categories">الأصناف</a>
-        </Authorized>
-    </AuthorizeView>
-    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetUsersReport)">
-        <Authorized>
-            <a class="report-nav__item" href="reports/users">المستخدمون</a>
-        </Authorized>
-    </AuthorizeView>
-    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetStockReport)">
-        <Authorized>
-            <a class="report-nav__item" href="reports/stock">المخزون</a>
-        </Authorized>
-    </AuthorizeView>
-</div>
+<ReportNav Active="overview" />
 
 <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview)">
     <Authorized>
         <ReportFilters FromDate="fromDate" FromDateChanged="v => fromDate = v"
                        ToDate="toDate" ToDateChanged="v => toDate = v"
-                       OnApply="Load" IsBusy="isLoading" />
+                       OnApply="Load" IsBusy="isLoading"
+                       Title="فلترة التقرير الشامل"
+                       Hint="حدّد الفترة الزمنية لتحليل المبيعات والمخزون" />
+
 
         @if (isLoading)
         {

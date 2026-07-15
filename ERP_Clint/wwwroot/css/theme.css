@@ -9,13 +9,36 @@
 .btn-primary {
     background: linear-gradient(135deg, #f97316, #c2410c);
     border: none;
-    font-weight: 600;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    font-family: 'Cairo', sans-serif;
+    padding: 9px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    line-height: 1.3;
+    transition: filter .15s, box-shadow .15s;
 }
 
     .btn-primary:hover,
     .btn-primary:focus {
         background: linear-gradient(135deg, #ea6a0f, #b13a0b);
-        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.25);
+        color: #fff;
+        text-decoration: none;
+        filter: brightness(1.05);
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        filter: none;
+        box-shadow: none;
     }
 
 .btn-outline-primary {
@@ -30,14 +53,60 @@
     }
 
 .btn-secondary {
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.12);
     color: #e8edf2;
+    font-weight: 600;
+    font-size: 13px;
+    font-family: 'Cairo', sans-serif;
+    padding: 9px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    line-height: 1.3;
+    transition: background .15s, border-color .15s;
 }
 
     .btn-secondary:hover {
-        background: rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.12);
+        color: #fff;
+        text-decoration: none;
     }
+
+    .btn-secondary:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+/* حقول الإدخال الموحدة مع باقي الشاشات */
+.form-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-family: 'Cairo', sans-serif;
+    outline: none;
+    box-sizing: border-box;
+    color-scheme: dark;
+}
+
+.form-input:focus {
+    border-color: #f97316;
+    background: rgba(255,255,255,0.06);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.form-input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
 
 /* ===== كاردات ===== */
 .card {
@@ -351,16 +420,21 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 16px;
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #141a22;
 }
 
 .report-nav__item {
     padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.03);
-    color: rgba(255,255,255,0.65);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: rgba(255,255,255,0.6);
     font-size: 13px;
     font-weight: 700;
+    font-family: 'Cairo', sans-serif;
     text-decoration: none;
     transition: background .15s, border-color .15s, color .15s;
 }
@@ -368,33 +442,72 @@
 .report-nav__item:hover {
     color: #fff;
     background: rgba(249,115,22,0.1);
-    border-color: rgba(249,115,22,0.3);
+    border-color: rgba(249,115,22,0.25);
     text-decoration: none;
 }
 
 .report-nav__item.active {
     color: #fff;
     background: linear-gradient(135deg, rgba(249,115,22,0.28), rgba(194,65,12,0.18));
-    border-color: rgba(249,115,22,0.45);
+    border-color: rgba(249,115,22,0.4);
 }
 
 .report-filters {
     display: flex;
     flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #141a22;
+}
+
+.report-filters--simple {
+    align-items: center;
+}
+
+.report-filters__intro {
+    min-width: 160px;
+}
+
+.report-filters__intro h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.report-filters__intro p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    line-height: 1.6;
+}
+
+.report-filters__body {
+    display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     align-items: end;
-    margin-bottom: 18px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.07);
-    background: rgba(255,255,255,0.025);
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.report-filters__fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
 }
 
 .report-filters__field {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    min-width: 160px;
+    min-width: 168px;
 }
 
 .report-filters__field label {
@@ -403,10 +516,76 @@
     color: rgba(255,255,255,0.55);
 }
 
+.report-filters__field .form-input {
+    min-height: 42px;
+}
+
+.report-filters__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.report-chip {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.65);
+    font-family: 'Cairo', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+}
+
+.report-chip:hover {
+    color: #fff;
+    border-color: rgba(249,115,22,0.35);
+    background: rgba(249,115,22,0.1);
+}
+
+.report-chip.active {
+    color: #fff;
+    border-color: rgba(249,115,22,0.45);
+    background: rgba(249,115,22,0.18);
+}
+
+.report-chip:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .report-filters__actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    align-items: center;
+}
+
+@media (max-width: 720px) {
+    .report-filters,
+    .report-filters__body {
+        align-items: stretch;
+        justify-content: stretch;
+    }
+
+    .report-filters__fields,
+    .report-filters__actions,
+    .report-filters__chips {
+        width: 100%;
+    }
+
+    .report-filters__field {
+        min-width: 0;
+        flex: 1 1 140px;
+    }
+
+    .report-filters__actions .btn-primary,
+    .report-filters__actions .btn-secondary {
+        flex: 1;
+    }
 }
 
 .report-grid {

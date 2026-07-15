@@ -1,0 +1,41 @@
+@namespace ERP_Clint.Pages.Reports
+@using ERP_Clint.Security
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="report-nav" role="navigation" aria-label="أقسام التقارير">
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview)">
+        <Authorized>
+            <a class="report-nav__item @(Active == "overview" ? "active" : null)" href="reports">الشامل</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetSalesReport)">
+        <Authorized>
+            <a class="report-nav__item @(Active == "sales" ? "active" : null)" href="reports/sales">المبيعات</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetProductsReport)">
+        <Authorized>
+            <a class="report-nav__item @(Active == "products" ? "active" : null)" href="reports/products">المنتجات</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetCategoriesReport)">
+        <Authorized>
+            <a class="report-nav__item @(Active == "categories" ? "active" : null)" href="reports/categories">الأصناف</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetUsersReport)">
+        <Authorized>
+            <a class="report-nav__item @(Active == "users" ? "active" : null)" href="reports/users">المستخدمون</a>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetStockReport)">
+        <Authorized>
+            <a class="report-nav__item @(Active == "stock" ? "active" : null)" href="reports/stock">المخزون</a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    /// <summary>overview | sales | products | categories | users | stock</summary>
+    [Parameter] public string Active { get; set; } = "overview";
+}
