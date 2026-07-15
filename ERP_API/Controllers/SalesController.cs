@@ -39,9 +39,9 @@ namespace ERP_API.Controllers
 
         [HttpGet("LookupProductByBarcode/{barcode}")]
         [Authorize(Roles = "FullAccess,CompleteSale")]
-        public async Task<IActionResult> LookupProductByBarcode(string barcode)
+        public async Task<IActionResult> LookupProductByBarcode(string barcode, [FromQuery] int? warehouseId = null)
         {
-            var product = await _salesService.LookupProductByBarcodeAsync(barcode);
+            var product = await _salesService.LookupProductByBarcodeAsync(barcode, warehouseId);
             if (product is null)
                 throw new KeyNotFoundException("لم يتم العثور على المادة");
             return Ok(product);
@@ -49,9 +49,9 @@ namespace ERP_API.Controllers
 
         [HttpGet("SearchProducts")]
         [Authorize(Roles = "FullAccess,CompleteSale")]
-        public async Task<IActionResult> SearchProducts([FromQuery] string term, [FromQuery] int take = 12)
+        public async Task<IActionResult> SearchProducts([FromQuery] string term, [FromQuery] int take = 12, [FromQuery] int? warehouseId = null)
         {
-            var products = await _salesService.SearchProductsAsync(term, take);
+            var products = await _salesService.SearchProductsAsync(term, take, warehouseId);
             return Ok(products);
         }
 

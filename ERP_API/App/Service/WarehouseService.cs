@@ -108,6 +108,10 @@ namespace ERP_API.App.Service
             if (linkedProducts > 0)
                 throw new LogicException("لا يمكن حذف المخزن لوجود منتجات مرتبطة به");
 
+            var hasStock = await _context.WarehouseStocks.AnyAsync(s => s.WarehouseId == id && !s.IsRemoved && s.Quantity > 0);
+            if (hasStock)
+                throw new LogicException("لا يمكن حذف المخزن لوجود أرصدة مخزون فيه");
+
             warehouse.IsRemoved = true;
             warehouse.RemoveDate = DateTime.UtcNow.AddHours(3);
             warehouse.RemoveUserId = deleteUserId;
@@ -119,15 +123,53 @@ namespace ERP_API.App.Service
         private async Task<Warehouse?> GetWarehouseAsync(int id)
             => await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == id && !w.IsRemoved);
 
-        private static WarehouseDto MapDto(Warehouse w, int productCount) => new()
+        public async Task<List<WarehouseStockDto>> GetStockByWarehouseAsync(int warehouseId)
         {
-            Id = w.Id,
-            Name = w.Name,
-            Code = w.Code,
-            Location = w.Location,
-            PhoneNumber = w.PhoneNumber,
-            IsActive = w.IsActive,
-            Notes = w.Notes,
+            _ = await GetWarehouseByIdAsync(warehouseId);
+            return await _context.WarehouseStocks
+                .AsNoTracking()
+                .Where(s => s.WarehouseId == warehouseId && !s.IsRemoved && s.Quantity != 0)
+                .OrderBy(s => s.Product.Name)
+                .Select(s => new WarehouseStockDto
+                {
+                    ProductId = s.ProductId,
+                    ProductName = s.Product.Name,
+                    Barcode = s.Product.Barcode,
+                    WarehouseId = s.WarehouseId,
+                    WarehouseName = s.Warehouse.Name,
+                    Quantity = s.Quantity
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<ProductWarehouseBalanceDto>> GetBalancesByProductAsync(int productId)
+        {
+            var exists = await _context.Products.AnyAsync(p => p.Id == productId && !p.IsRemoved);
+            if (!exists) throw new KeyNotFoundException("المنتج غير موجود");
+
+            return await _context.WarehouseStocks
+                .AsNoTracking()
+                .Where(s => s.ProductId == productId && !s.IsRemoved)
+                .OrderBy(s => s.Warehouse.Name)
+                .Select(s => new ProductWarehouseBalanceDto
+                {
+                    WarehouseId = s.WarehouseId,
+                    WarehouseName = s.Warehouse.Name,
+                    WarehouseCode = s.Warehouse.Code,
+                    Quantity = s.Quantity
+                })
+                .ToListAsync();
+        }
+
+        private static WarehouseDto MapDto(Warehouse warehouse, int productCount) => new()
+        {
+            Id = warehouse.Id,
+            Name = warehouse.Name,
+            Code = warehouse.Code,
+            Location = warehouse.Location,
+            PhoneNumber = warehouse.PhoneNumber,
+            IsActive = warehouse.IsActive,
+            Notes = warehouse.Notes,
             ProductCount = productCount
         };
     }

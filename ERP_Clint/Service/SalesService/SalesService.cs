@@ -13,8 +13,8 @@ namespace ERP_Clint.Service.SalesService
         Task<SaleDto?> CompleteSaleAsync(CompleteSaleModel model);
         Task<SalesListResponse?> GetSalesAsync(PageDto page);
         Task<SaleDto?> GetSaleByIdAsync(int id);
-        Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode);
-        Task<List<ProductDto>?> SearchProductsAsync(string term);
+        Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode, int? warehouseId = null);
+        Task<List<ProductDto>?> SearchProductsAsync(string term, int? warehouseId = null);
     }
 
     public class SalesService : ISalesService
@@ -60,10 +60,11 @@ namespace ERP_Clint.Service.SalesService
             return await response.Content.ReadFromJsonAsync<SaleDto>();
         }
 
-        public async Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode)
+        public async Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode, int? warehouseId = null)
         {
             var encoded = Uri.EscapeDataString(barcode);
-            var response = await _httpClient.GetAsync($"api/Sales/LookupProductByBarcode/{encoded}");
+            var qs = warehouseId is > 0 ? $"?warehouseId={warehouseId.Value}" : string.Empty;
+            var response = await _httpClient.GetAsync($"api/Sales/LookupProductByBarcode/{encoded}{qs}");
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return null;
             if (!response.IsSuccessStatusCode)
@@ -72,10 +73,11 @@ namespace ERP_Clint.Service.SalesService
             return await response.Content.ReadFromJsonAsync<ProductLookupDto>();
         }
 
-        public async Task<List<ProductDto>?> SearchProductsAsync(string term)
+        public async Task<List<ProductDto>?> SearchProductsAsync(string term, int? warehouseId = null)
         {
             var encoded = Uri.EscapeDataString(term);
-            var response = await _httpClient.GetAsync($"api/Sales/SearchProducts?term={encoded}&take=12");
+            var qs = warehouseId is > 0 ? $"&warehouseId={warehouseId.Value}" : string.Empty;
+            var response = await _httpClient.GetAsync($"api/Sales/SearchProducts?term={encoded}&take=12{qs}");
             if (!response.IsSuccessStatusCode)
                 throw new ApiRequestException("تعذر البحث عن المنتجات", response.StatusCode);
 

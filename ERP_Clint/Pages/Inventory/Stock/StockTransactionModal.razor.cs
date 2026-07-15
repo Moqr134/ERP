@@ -1,6 +1,7 @@
 using ERP_Clint.Service.InventoryService;
 using ERPDto.ProductsDto;
 using ERPDto.StockTransactionDto;
+using ERPDto.WarehouseDto;
 using Microsoft.AspNetCore.Components;
 
 namespace ERP_Clint.Pages.Inventory.Stock
@@ -13,11 +14,13 @@ namespace ERP_Clint.Pages.Inventory.Stock
 
         [Inject] private IStockTransactionsService StockTransactionsService { get; set; } = default!;
         [Inject] private IProductService ProductService { get; set; } = default!;
+        [Inject] private IWarehousesService WarehousesService { get; set; } = default!;
 
         private CreateStockTransactionsModel formModel = new() { Quantity = 1, TransactionType = "In" };
         private bool isSaving;
         private string? errorMessage;
         private List<ProductDto> Products = new();
+        private List<WarehouseDto> warehouses = new();
         private string productSearch = string.Empty;
         private bool isDropdownOpen;
 
@@ -32,7 +35,6 @@ namespace ERP_Clint.Pages.Inventory.Stock
         protected override async Task OnParametersSetAsync()
         {
             errorMessage = null;
-            // load products for select (first page with large size)
             try
             {
                 var list = await ProductService.GetAllProductsAsync(new ERPDto.PaigingDto.PageDto { PageIndex = 1, PageSize = 200 });
@@ -42,10 +44,26 @@ namespace ERP_Clint.Pages.Inventory.Stock
             {
                 Products = new List<ProductDto>();
             }
+
+            try
+            {
+                warehouses = (await WarehousesService.GetAllWarehousesAsync()).Where(w => w.IsActive).ToList();
+                if (formModel.WarehouseId == 0 && warehouses.Count > 0)
+                    formModel.WarehouseId = warehouses[0].Id;
+            }
+            catch
+            {
+                warehouses = new();
+            }
         }
 
         private async Task HandleSave()
         {
+            if (formModel.WarehouseId <= 0)
+            {
+                errorMessage = "يرجى اختيار المخزن";
+                return;
+            }
             if (formModel.ProductId <= 0)
             {
                 errorMessage = "يرجى اختيار منتج";
@@ -100,8 +118,12 @@ namespace ERP_Clint.Pages.Inventory.Stock
         private async Task Close()
         {
             if (isSaving) return;
-            // reset form
-            formModel = new CreateStockTransactionsModel { Quantity = 1, TransactionType = "In" };
+            formModel = new CreateStockTransactionsModel
+            {
+                Quantity = 1,
+                TransactionType = "In",
+                WarehouseId = warehouses.FirstOrDefault()?.Id ?? 0
+            };
             productSearch = string.Empty;
             isDropdownOpen = false;
             await OnClose.InvokeAsync();

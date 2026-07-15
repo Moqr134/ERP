@@ -47,7 +47,7 @@ namespace ERP_API.App.Service
             return await _context.Products.FirstOrDefaultAsync(x => x.Barcode == term && !x.IsRemoved);
         }
 
-        public async Task<ProductLookupDto?> LookupByBarcodeAsync(string barcode)
+        public async Task<ProductLookupDto?> LookupByBarcodeAsync(string barcode, int? warehouseId = null)
         {
             if (string.IsNullOrWhiteSpace(barcode))
                 return null;
@@ -63,43 +63,61 @@ namespace ERP_API.App.Service
                     && b.Product != null && !b.Product.IsRemoved
                     && b.ProductUnit != null && !b.ProductUnit.IsRemoved);
 
+            ProductLookupDto? dto;
             if (hit is not null)
-                return ToLookup(hit.Product!, hit.ProductUnit!, hit.Barcode);
-
-            // Legacy fallback: product header barcode → base/default unit
-            var product = await _context.Products
-                .AsNoTracking()
-                .Include(p => p.Units.Where(u => !u.IsRemoved))
-                .FirstOrDefaultAsync(p => p.Barcode == term && !p.IsRemoved);
-
-            if (product is null)
-                return null;
-
-            var unit = product.Units.FirstOrDefault(u => u.IsDefaultForSale)
-                ?? product.Units.FirstOrDefault(u => u.IsBase)
-                ?? product.Units.OrderBy(u => u.SortOrder).FirstOrDefault();
-
-            if (unit is null)
             {
-                return new ProductLookupDto
+                dto = ToLookup(hit.Product!, hit.ProductUnit!, hit.Barcode);
+            }
+            else
+            {
+                // Legacy fallback: product header barcode → base/default unit
+                var product = await _context.Products
+                    .AsNoTracking()
+                    .Include(p => p.Units.Where(u => !u.IsRemoved))
+                    .FirstOrDefaultAsync(p => p.Barcode == term && !p.IsRemoved);
+
+                if (product is null)
+                    return null;
+
+                var unit = product.Units.FirstOrDefault(u => u.IsDefaultForSale)
+                    ?? product.Units.FirstOrDefault(u => u.IsBase)
+                    ?? product.Units.OrderBy(u => u.SortOrder).FirstOrDefault();
+
+                if (unit is null)
                 {
-                    ProductId = product.Id,
-                    Name = product.Name,
-                    SKU = product.SKU,
-                    CurrentStock = product.CurrentStock,
-                    MinStockLevel = product.MinStockLevel,
-                    CategoriesId = product.CategoriesId,
-                    WarehouseId = product.WarehouseId,
-                    CostPrice = product.CostPrice,
-                    UnitId = 0,
-                    UnitName = "مفرد",
-                    UnitFactor = 1,
-                    UnitPrice = product.SellingPrice,
-                    Barcode = product.Barcode
-                };
+                    dto = new ProductLookupDto
+                    {
+                        ProductId = product.Id,
+                        Name = product.Name,
+                        SKU = product.SKU,
+                        CurrentStock = product.CurrentStock,
+                        MinStockLevel = product.MinStockLevel,
+                        CategoriesId = product.CategoriesId,
+                        WarehouseId = product.WarehouseId,
+                        CostPrice = product.CostPrice,
+                        UnitId = 0,
+                        UnitName = "مفرد",
+                        UnitFactor = 1,
+                        UnitPrice = product.SellingPrice,
+                        Barcode = product.Barcode
+                    };
+                }
+                else
+                {
+                    dto = ToLookup(product, unit, term);
+                }
             }
 
-            return ToLookup(product, unit, term);
+            if (warehouseId is > 0)
+            {
+                dto.CurrentStock = await _context.WarehouseStocks
+                    .AsNoTracking()
+                    .Where(s => s.ProductId == dto.ProductId && s.WarehouseId == warehouseId.Value && !s.IsRemoved)
+                    .Select(s => s.Quantity)
+                    .FirstOrDefaultAsync();
+            }
+
+            return dto;
         }
 
         private static ProductLookupDto ToLookup(Product product, ProductUnit unit, string barcode) => new()

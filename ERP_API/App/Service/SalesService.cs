@@ -1,5 +1,6 @@
 using AutoMapper;
 using ERP_API.App.IService;
+using ERP_API.App.Inventory;
 using ERP_API.Domin.ProductEntity;
 using ERP_API.Domin.SalesEntity;
 using ERP_API.Domin.StockTransactionsEntity;
@@ -24,10 +25,10 @@ namespace ERP_API.App.Service
             _productService = productService;
         }
 
-        public async Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode)
-            => await _productService.LookupByBarcodeAsync(barcode);
+        public async Task<ProductLookupDto?> LookupProductByBarcodeAsync(string barcode, int? warehouseId = null)
+            => await _productService.LookupByBarcodeAsync(barcode, warehouseId);
 
-        public async Task<List<ProductDto>> SearchProductsAsync(string term, int take = 12)
+        public async Task<List<ProductDto>> SearchProductsAsync(string term, int take = 12, int? warehouseId = null)
         {
             if (string.IsNullOrWhiteSpace(term))
                 return [];
@@ -62,6 +63,16 @@ namespace ERP_API.App.Service
             var ids = products.Select(p => p.Id).ToList();
             if (ids.Count == 0)
                 return products;
+
+            if (warehouseId is > 0)
+            {
+                var balances = await _context.WarehouseStocks
+                    .AsNoTracking()
+                    .Where(s => ids.Contains(s.ProductId) && s.WarehouseId == warehouseId.Value && !s.IsRemoved)
+                    .ToDictionaryAsync(s => s.ProductId, s => s.Quantity);
+                foreach (var p in products)
+                    p.CurrentStock = balances.TryGetValue(p.Id, out var qty) ? qty : 0;
+            }
 
             var units = await _context.ProductUnits
                 .AsNoTracking()
@@ -128,9 +139,14 @@ namespace ERP_API.App.Service
             if (model.Discount < 0)
                 throw new InvalidOperationException("الخصم لا يمكن أن يكون سالباً");
 
+            if (model.WarehouseId <= 0)
+                throw new InvalidOperationException("يجب اختيار مخزن البيع");
+
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                await WarehouseStockHelper.EnsureWarehouseActiveAsync(_context, model.WarehouseId);
+
                 var productIds = mergedLines.Select(l => l.ProductId).Distinct().ToList();
                 var products = await _context.Products
                     .Include(p => p.Units.Where(u => !u.IsRemoved))
@@ -168,8 +184,9 @@ namespace ERP_API.App.Service
                 foreach (var (productId, needed) in baseNeeded)
                 {
                     var product = productMap[productId];
-                    if (needed > product.CurrentStock)
-                        throw new InvalidOperationException($"المخزون غير كافٍ للمنتج: {product.Name}");
+                    var available = await WarehouseStockHelper.GetQuantityAsync(_context, productId, model.WarehouseId);
+                    if (needed > available)
+                        throw new InvalidOperationException($"المخزون غير كافٍ في المخزن للمنتج: {product.Name}");
                 }
 
                 var saleLines = new List<SaleLine>();
@@ -178,8 +195,8 @@ namespace ERP_API.App.Service
                 foreach (var item in resolved)
                 {
                     subTotal += item.LineTotal;
-                    item.Product.CurrentStock -= item.BaseQty;
-                    _context.Products.Entry(item.Product).State = EntityState.Modified;
+                    await WarehouseStockHelper.ApplyDeltaAsync(
+                        _context, item.Product, model.WarehouseId, -item.BaseQty, userId, now, item.Product.Name);
 
                     var barcode = !string.IsNullOrWhiteSpace(item.Line.Barcode)
                         ? item.Line.Barcode
@@ -205,6 +222,7 @@ namespace ERP_API.App.Service
                     _context.StockTransactions.Add(new StockTransactions
                     {
                         ProductId = item.Product.Id,
+                        WarehouseId = model.WarehouseId,
                         Quantity = item.BaseQty,
                         TransactionType = "Out",
                         ReferenceId = invoiceNumber,
@@ -245,6 +263,7 @@ namespace ERP_API.App.Service
                     ChangeAmount = changeAmount,
                     Notes = string.IsNullOrWhiteSpace(model.Notes) ? null : model.Notes.Trim(),
                     Status = "Completed",
+                    WarehouseId = model.WarehouseId,
                     CreateDate = now,
                     CreateUserId = userId,
                     Lines = saleLines
@@ -292,6 +311,7 @@ namespace ERP_API.App.Service
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .Include(s => s.Lines)
+                .Include(s => s.Warehouse)
                 .ToListAsync();
 
             return new SalesListResponse
@@ -309,6 +329,7 @@ namespace ERP_API.App.Service
             var sale = await _context.Sales
                 .AsNoTracking()
                 .Include(s => s.Lines)
+                .Include(s => s.Warehouse)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (sale is null)
@@ -373,6 +394,8 @@ namespace ERP_API.App.Service
             ChangeAmount = sale.ChangeAmount,
             Notes = sale.Notes,
             Status = sale.Status,
+            WarehouseId = sale.WarehouseId,
+            WarehouseName = sale.Warehouse?.Name,
             CreateDate = sale.CreateDate,
             CreateUserId = sale.CreateUserId,
             Lines = sale.Lines?

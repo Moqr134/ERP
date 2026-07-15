@@ -50,6 +50,7 @@
                 <tr>
                     <th style="width:140px">الوقت</th>
                     <th>المنتج</th>
+                    <th style="width:140px">المخزن</th>
                     <th style="width:120px">النوع</th>
                     <th style="width:90px">الكمية</th>
                     <th style="width:140px">المرجع</th>
@@ -62,7 +63,8 @@
                     <tr>
                         <td class="mono">@t.CreateDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                         <td>@t.ProductName</td>
-                        <td>@(t.TransactionType == "In" ? "داخل" : t.TransactionType == "Out" ? "خارج" : t.TransactionType)</td>
+                        <td>@(string.IsNullOrWhiteSpace(t.WarehouseName) ? "—" : t.WarehouseName)</td>
+                        <td>@FormatTxnType(t.TransactionType)</td>
                         <td>@t.Quantity</td>
                         <td class="mono">@t.ReferenceId</td>
                         <td>@t.Notes</td>
@@ -89,7 +91,17 @@
                 (t.ProductName ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
                 || (t.TransactionType ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
                 || (t.ReferenceId ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (t.WarehouseName ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
                 || (t.Notes ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    private static string FormatTxnType(string? type) => type switch
+    {
+        "In" => "داخل",
+        "Out" => "خارج",
+        "TransferIn" => "تحويل وارد",
+        "TransferOut" => "تحويل صادر",
+        _ => type ?? "—"
+    };
 
     protected override async Task OnInitializedAsync()
     {
