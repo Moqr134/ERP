@@ -123,7 +123,7 @@
                 <thead>
                     <tr>
                         <th>المنتج</th>
-                        <th style="width:80px">الكمية</th>
+                        <th style="width:100px">الكمية</th>
                         <th style="width:100px">السعر</th>
                         <th style="width:110px">الإجمالي</th>
                     </tr>
@@ -136,7 +136,13 @@
                                 <div>@line.ProductName</div>
                                 <div class="mono" style="font-size:12px; opacity:.5;">@line.Barcode</div>
                             </td>
-                            <td>@line.Quantity</td>
+                            <td>
+                                @line.Quantity @line.UnitName
+                                @if (line.UnitFactor > 1)
+                                {
+                                    <div style="font-size:11px; opacity:.45;">= @line.BaseQuantity مفرد</div>
+                                }
+                            </td>
                             <td class="mono">@line.UnitPrice.ToString("N0")</td>
                             <td class="mono">@line.LineTotal.ToString("N0")</td>
                         </tr>

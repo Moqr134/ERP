@@ -4,6 +4,7 @@
             <h3>@(IsEditMode ? "تعديل المنتج" : "إضافة منتج جديد")</h3>
             <button class="modal-close" @onclick="Close">✕</button>
         </div>
+
         @if (IsEditMode)
         {
             <EditForm Model="@formModel" OnValidSubmit="HandleSave">
@@ -14,28 +15,28 @@
                     <div class="alert-error">⚠ @errorMessage</div>
                 }
 
-                <div class="form-row-2">
-                    <div class="form-group">
-                        <label>كود المنتج</label>
-                        <InputText @bind-Value="formModel.Barcode" class="form-input" placeholder="7943781001" />
-                        <ValidationMessage For="@(() => formModel.Barcode)" />
-                    </div>
-                    <div class="form-group">
-                        <label>اسم المنتج</label>
-                        <InputText @bind-Value="formModel.Name" class="form-input" placeholder="اسم المنتج" />
-                        <ValidationMessage For="@(() => formModel.Name)" />
-                    </div>
+                <div class="form-group">
+                    <label>اسم المنتج</label>
+                    <InputText @bind-Value="formModel.Name" class="form-input" placeholder="اسم المنتج" />
+                    <ValidationMessage For="@(() => formModel.Name)" />
                 </div>
 
-                <div class="form-group">
-                    <label>المخزن</label>
-                    <InputSelect @bind-Value="formModel.WarehouseId" class="form-input">
-                        <option value="">بدون مخزن</option>
-                        @foreach (var warehouse in ActiveWarehouses)
-                        {
-                            <option value="@warehouse.Id">@warehouse.Name</option>
-                        }
-                    </InputSelect>
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>رمز المنتج (SKU)</label>
+                        <InputText @bind-Value="formModel.SKU" class="form-input" placeholder="PRD-1001" />
+                        <ValidationMessage For="@(() => formModel.SKU)" />
+                    </div>
+                    <div class="form-group">
+                        <label>المخزن</label>
+                        <InputSelect @bind-Value="formModel.WarehouseId" class="form-input">
+                            <option value="">بدون مخزن</option>
+                            @foreach (var warehouse in ActiveWarehouses)
+                            {
+                                <option value="@warehouse.Id">@warehouse.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
                 </div>
 
                 <div class="form-row-2">
@@ -43,33 +44,28 @@
                         <label>القسم</label>
                         <InputSelect @bind-Value="formModel.CategoryId" class="form-input">
                             <option value="0">اختر القسم</option>
-                            @foreach (var category in Categories)
+                            @foreach (var category in Categories ?? new())
                             {
                                 <option value="@category.Id">@category.Name</option>
                             }
                         </InputSelect>
                         <ValidationMessage For="@(() => formModel.CategoryId)" />
-
                     </div>
-
-                    <div class="form-row-3">
-                        <div class="form-group">
-                            <label>سعر الكلفة (د.ع)</label>
-                            <InputNumber @bind-Value="formModel.CostPrice" class="form-input" placeholder="0" />
-                            <ValidationMessage For="@(() => formModel.CostPrice)" />
-                        </div>
-                        <div class="form-group">
-                            <label>السعر (د.ع)</label>
-                            <InputNumber @bind-Value="formModel.Price" class="form-input" placeholder="0" />
-                            <ValidationMessage For="@(() => formModel.Price)" />
-                        </div>
-                        <div class="form-group">
-                            <label>أقل كمية ممكنة</label>
-                            <InputNumber @bind-Value="formModel.MinStockLevel" class="form-input" placeholder="0" />
-                            <ValidationMessage For="@(() => formModel.MinStockLevel)" />
-                        </div>
+                    <div class="form-group">
+                        <label>سعر الكلفة (د.ع)</label>
+                        <InputNumber @bind-Value="formModel.CostPrice" class="form-input" placeholder="0" />
+                        <ValidationMessage For="@(() => formModel.CostPrice)" />
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label>أقل كمية ممكنة (بالمفرد)</label>
+                    <InputNumber @bind-Value="formModel.MinStockLevel" class="form-input" placeholder="0" />
+                    <ValidationMessage For="@(() => formModel.MinStockLevel)" />
+                </div>
+
+                @RenderUnitsEditor()
+
                 <div class="modal-box__footer">
                     <button type="button" class="btn-secondary" @onclick="Close" disabled="@isSaving">إلغاء</button>
                     <button type="submit" class="btn-primary" disabled="@isSaving">
@@ -78,7 +74,8 @@
                 </div>
             </EditForm>
         }
-        else{
+        else
+        {
             <EditForm Model="@Model" OnValidSubmit="HandleSave">
                 <DataAnnotationsValidator />
 
@@ -86,6 +83,7 @@
                 {
                     <div class="alert-error">⚠ @errorMessage</div>
                 }
+
                 <div class="form-group">
                     <label>اسم المنتج</label>
                     <InputText @bind-Value="Model.Name" class="form-input" placeholder="اسم المنتج" />
@@ -98,23 +96,16 @@
                         <InputText @bind-Value="Model.SKU" class="form-input" placeholder="PRD-1001" />
                         <ValidationMessage For="@(() => Model.SKU)" />
                     </div>
-                    
                     <div class="form-group">
-                        <label>الباركود</label>
-                        <InputText @bind-Value="Model.Barcode" class="form-input" placeholder="رمز الباركود" />
-                        <ValidationMessage For="@(() => Model.Barcode)" />
+                        <label>المخزن</label>
+                        <InputSelect @bind-Value="Model.WarehouseId" class="form-input">
+                            <option value="">بدون مخزن</option>
+                            @foreach (var warehouse in ActiveWarehouses)
+                            {
+                                <option value="@warehouse.Id">@warehouse.Name</option>
+                            }
+                        </InputSelect>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label>المخزن</label>
-                    <InputSelect @bind-Value="Model.WarehouseId" class="form-input">
-                        <option value="">بدون مخزن</option>
-                        @foreach (var warehouse in ActiveWarehouses)
-                        {
-                            <option value="@warehouse.Id">@warehouse.Name</option>
-                        }
-                    </InputSelect>
                 </div>
 
                 <div class="form-row-2">
@@ -122,37 +113,28 @@
                         <label>القسم</label>
                         <InputSelect @bind-Value="Model.CategoriesId" class="form-input">
                             <option value="0">اختر القسم</option>
-                            @foreach (var category in Categories)
+                            @foreach (var category in Categories ?? new())
                             {
                                 <option value="@category.Id">@category.Name</option>
                             }
                         </InputSelect>
                         <ValidationMessage For="@(() => Model.CategoriesId)" />
-
                     </div>
-
-                    <div class="form-row-3">
-                        <div class="form-group">
-                            <label>سعر الكلفة (د.ع)</label>
-                            <InputNumber @bind-Value="Model.CostPrice" class="form-input" placeholder="0" />
-                            <ValidationMessage For="@(() => Model.CostPrice)" />
-                        </div>
-                    </div>
-                    <div class="form-row-3">
-                        <div class="form-group">
-                            <label>السعر (د.ع)</label>
-                            <InputNumber @bind-Value="Model.SellingPrice" class="form-input" placeholder="0" />
-                            <ValidationMessage For="@(() => Model.SellingPrice)" />
-                        </div>
-                    </div>
-                    <div class="form-row-3">
-                        <div class="form-group">
-                            <label> اقل كمية ممكنة</label>
-                            <InputNumber @bind-Value="Model.MinStockLevel" class="form-input" placeholder="0" />
-                            <ValidationMessage For="@(() => Model.MinStockLevel)" />
-                        </div>
+                    <div class="form-group">
+                        <label>سعر الكلفة (د.ع)</label>
+                        <InputNumber @bind-Value="Model.CostPrice" class="form-input" placeholder="0" />
+                        <ValidationMessage For="@(() => Model.CostPrice)" />
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label>أقل كمية ممكنة (بالمفرد)</label>
+                    <InputNumber @bind-Value="Model.MinStockLevel" class="form-input" placeholder="0" />
+                    <ValidationMessage For="@(() => Model.MinStockLevel)" />
+                </div>
+
+                @RenderUnitsEditor()
+
                 <div class="modal-box__footer">
                     <button type="button" class="btn-secondary" @onclick="Close" disabled="@isSaving">إلغاء</button>
                     <button type="submit" class="btn-primary" disabled="@isSaving">
@@ -161,9 +143,91 @@
                 </div>
             </EditForm>
         }
-        
     </div>
 </div>
+
+@code {
+    private RenderFragment RenderUnitsEditor() => __builder =>
+    {
+        <div class="units-section">
+            <div class="units-section__head">
+                <div>
+                    <h4>وحدات التعبئة والباركودات</h4>
+                    <p>المخزون يُحسب دائماً بالمفرد. الكارتون وغيره معامل = عدد القطع داخله. كل وحدة لها باركود أو أكثر للمسح في نقطة البيع.</p>
+                </div>
+                <div class="units-section__actions">
+                    <button type="button" class="btn-chip" @onclick='() => AddUnit("كارتون")' disabled="@isSaving">+ كارتون</button>
+                    <button type="button" class="btn-chip" @onclick='() => AddUnit("باكيت")' disabled="@isSaving">+ باكيت</button>
+                    <button type="button" class="btn-chip" @onclick="() => AddUnit()" disabled="@isSaving">+ وحدة</button>
+                </div>
+            </div>
+
+            @for (var i = 0; i < unitDrafts.Count; i++)
+            {
+                var unit = unitDrafts[i];
+                var unitIndex = i;
+                <div class="unit-block">
+                    <div class="unit-block__top">
+                        <div class="form-group unit-field">
+                            <label>اسم الوحدة</label>
+                            <InputText @bind-Value="unit.Name" class="form-input" placeholder="مفرد / كارتون…" />
+                        </div>
+                        <div class="form-group unit-field unit-field--sm">
+                            <label>المعامل</label>
+                            <InputNumber @bind-Value="unit.Factor" class="form-input" disabled="@unit.IsBase" />
+                        </div>
+                        <div class="form-group unit-field">
+                            <label>سعر البيع (د.ع)</label>
+                            <InputNumber @bind-Value="unit.SellingPrice" class="form-input" />
+                        </div>
+                        <button type="button" class="unit-remove" title="حذف الوحدة"
+                                @onclick="() => RemoveUnit(unit)" disabled="@(isSaving || unitDrafts.Count <= 1)">✕</button>
+                    </div>
+
+                    <div class="unit-flags">
+                        <label class="flag">
+                            <input type="radio" name="base-unit" checked="@unit.IsBase"
+                                   @onchange="() => SetBaseUnit(unit)" disabled="@isSaving" />
+                            وحدة أساس (مفرد)
+                        </label>
+                        <label class="flag">
+                            <input type="radio" name="default-sale-unit" checked="@unit.IsDefaultForSale"
+                                   @onchange="() => SetDefaultSaleUnit(unit)" disabled="@isSaving" />
+                            افتراضي للبيع
+                        </label>
+                        @if (unit.Factor > 1)
+                        {
+                            <span class="unit-hint">كل @unit.Name = @unit.Factor مفرد</span>
+                        }
+                    </div>
+
+                    <div class="barcodes">
+                        <div class="barcodes__label">الباركودات</div>
+                        @foreach (var barcode in unit.Barcodes)
+                        {
+                            <div class="barcode-row">
+                                <label class="flag flag--compact" title="أساسي لهذه الوحدة">
+                                    <input type="radio"
+                                           name="@($"primary-unit-{unitIndex}")"
+                                           checked="@barcode.IsPrimary"
+                                           @onchange="() => SetPrimaryBarcode(unit, barcode)"
+                                           disabled="@isSaving" />
+                                </label>
+                                <InputText @bind-Value="barcode.Barcode" class="form-input" placeholder="امسح أو اكتب الباركود" />
+                                <button type="button" class="unit-remove" title="حذف الباركود"
+                                        @onclick="() => RemoveBarcode(unit, barcode)"
+                                        disabled="@(isSaving || unit.Barcodes.Count <= 1)">✕</button>
+                            </div>
+                        }
+                        <button type="button" class="btn-link" @onclick="() => AddBarcode(unit)" disabled="@isSaving">
+                            + باركود إضافي
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    };
+}
 
 <style>
     .modal-overlay {
@@ -174,11 +238,11 @@
     .modal-overlay.open { display: flex; }
 
     .modal-box {
-        width: 100%; max-width: 520px; background: #141a22;
+        width: 100%; max-width: 720px; background: #141a22;
         border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
         padding: 26px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         font-family: 'Cairo', sans-serif; color: #e8edf2;
-        max-height: 90vh; overflow-y: auto;
+        max-height: 92vh; overflow-y: auto;
     }
     .modal-box__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .modal-box__header h3 { font-size: 16px; font-weight: 700; color: #fff; }
@@ -190,7 +254,6 @@
     }
 
     .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: 13px; margin-bottom: 8px; color: rgba(255,255,255,0.75); font-weight: 600; }
@@ -201,26 +264,79 @@
         box-sizing: border-box;
     }
     .form-input:focus { border-color: #f97316; background: rgba(255,255,255,0.06); }
+    .form-input:disabled { opacity: 0.55; cursor: not-allowed; }
     select.form-input option { background: #141a22; color: #fff; }
-
-    .field-hint {
-        display: block; font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 6px; line-height: 1.6;
-    }
     .validation-message { color: #f87171; font-size: 12px; margin-top: 6px; display: block; }
 
-    .switch-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-    .switch-row label { font-size: 13px; color: rgba(255,255,255,0.75); font-weight: 600; }
-    .switch { position: relative; width: 42px; height: 24px; }
-    .switch input { display: none; }
-    .switch-track {
-        position: absolute; inset: 0; background: rgba(255,255,255,0.1); border-radius: 20px; cursor: pointer; transition: .2s;
+    .units-section {
+        margin: 8px 0 18px;
+        padding: 16px;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        background: rgba(0,0,0,0.18);
     }
-    .switch-track::before {
-        content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
-        background: #fff; top: 3px; right: 3px; transition: .2s;
+    .units-section__head {
+        display: flex; flex-wrap: wrap; gap: 12px;
+        align-items: flex-start; justify-content: space-between;
+        margin-bottom: 14px;
     }
-    .switch input:checked + .switch-track { background: #f97316; }
-    .switch input:checked + .switch-track::before { transform: translateX(-18px); }
+    .units-section__head h4 {
+        margin: 0 0 6px; font-size: 14px; font-weight: 700; color: #fff;
+    }
+    .units-section__head p {
+        margin: 0; font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.45); max-width: 420px;
+    }
+    .units-section__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .btn-chip {
+        background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.35);
+        color: #fb923c; font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 700;
+        padding: 7px 12px; border-radius: 999px; cursor: pointer;
+    }
+    .btn-link {
+        background: none; border: none; color: #fb923c; font-family: 'Cairo', sans-serif;
+        font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 0; margin-top: 4px;
+    }
+
+    .unit-block {
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+        background: rgba(255,255,255,0.02);
+    }
+    .unit-block__top {
+        display: grid;
+        grid-template-columns: 1.4fr 0.7fr 1fr auto;
+        gap: 10px;
+        align-items: end;
+    }
+    .unit-field { margin-bottom: 0; }
+    .unit-remove {
+        background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
+        color: #f87171; width: 38px; height: 42px; border-radius: 10px; cursor: pointer;
+        margin-bottom: 0;
+    }
+
+    .unit-flags {
+        display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+        margin: 12px 0 10px;
+    }
+    .flag {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 12px; color: rgba(255,255,255,0.7); cursor: pointer;
+    }
+    .flag--compact { margin: 0; }
+    .flag input { accent-color: #f97316; }
+    .unit-hint { font-size: 11px; color: rgba(255,255,255,0.35); }
+
+    .barcodes__label {
+        font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.55); margin-bottom: 8px;
+    }
+    .barcode-row {
+        display: grid; grid-template-columns: auto 1fr auto; gap: 8px;
+        align-items: center; margin-bottom: 8px;
+    }
 
     .modal-box__footer { display: flex; gap: 10px; margin-top: 8px; }
     .modal-box__footer button { flex: 1; }
@@ -236,7 +352,8 @@
     }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    @@media (max-width: 560px) {
-        .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
+    @@media (max-width: 640px) {
+        .form-row-2, .unit-block__top { grid-template-columns: 1fr; }
+        .unit-remove { width: 100%; height: 40px; }
     }
 </style>
