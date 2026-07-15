@@ -44,7 +44,7 @@
                         <label>القسم</label>
                         <InputSelect @bind-Value="formModel.CategoryId" class="form-input">
                             <option value="0">اختر القسم</option>
-                            @foreach (var category in Categories)
+                            @foreach (var category in Categories ?? new())
                             {
                                 <option value="@category.Id">@category.Name</option>
                             }
@@ -113,7 +113,7 @@
                         <label>القسم</label>
                         <InputSelect @bind-Value="Model.CategoriesId" class="form-input">
                             <option value="0">اختر القسم</option>
-                            @foreach (var category in Categories)
+                            @foreach (var category in Categories ?? new())
                             {
                                 <option value="@category.Id">@category.Name</option>
                             }
