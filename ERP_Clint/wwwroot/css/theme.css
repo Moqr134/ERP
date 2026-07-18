@@ -5,6 +5,18 @@
    المشروع حتى تنسجم مع ثيم اللوگن (فحمي + برتقالي)
    ========================================================= */
 
+:root,
+[data-bs-theme="dark"] {
+    color-scheme: dark;
+    --bs-body-bg: #0b0f14;
+    --bs-body-color: #e8edf2;
+    --bs-secondary-bg: #141a22;
+    --bs-tertiary-bg: #171e27;
+    --bs-border-color: rgba(255, 255, 255, 0.12);
+    --bs-form-control-bg: #141a22;
+    --bs-form-select-bg-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23fb923c' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
+}
+
 /* ===== أزرار ===== */
 .btn-primary {
     background: linear-gradient(135deg, #f97316, #c2410c);
@@ -108,7 +120,8 @@
     cursor: not-allowed;
 }
 
-/* قوائم select الداكنة — موحّدة على كل الصفحات */
+/* قوائم select الداكنة — تغطي كل الصفحات وتتغلب على أنماط المكوّنات المحلية */
+select,
 select.form-input,
 select.form-control,
 select.form-select,
@@ -119,38 +132,51 @@ select.search-input,
 .report-filters select,
 .modal-box select,
 .header-actions select,
-.table-panel select {
-    width: 100%;
+.table-panel select,
+.form-group select {
     padding: 10px 14px;
     padding-left: 36px;
-    background-color: #141a22;
-    border: 1px solid rgba(255,255,255,0.1);
+    background-color: #141a22 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23fb923c' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 14px center !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
     border-radius: 10px;
-    color: #fff;
+    color: #e8edf2 !important;
     font-size: 14px;
     font-family: 'Cairo', sans-serif;
     outline: none;
     box-sizing: border-box;
-    color-scheme: dark;
+    color-scheme: dark !important;
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23fb923c' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: left 14px center;
     cursor: pointer;
+    forced-color-adjust: none;
 }
 
+select.form-input:not(.form-input--sm),
+select.form-control,
+select.form-select,
+.form-select,
+.modal-box select:not(.form-input--sm),
+.form-group select:not(.form-input--sm) {
+    width: 100%;
+}
+
+select:focus,
 select.form-input:focus,
 select.form-control:focus,
 select.form-select:focus,
 .form-select:focus,
 select.pos__input:focus,
-select.filter-select:focus {
-    border-color: #f97316;
-    background-color: #171e27;
+select.filter-select:focus,
+.form-group select:focus {
+    border-color: #f97316 !important;
+    background-color: #171e27 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23fb923c' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E") !important;
     box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
-    color: #fff;
+    color: #fff !important;
 }
 
 select:disabled {
@@ -159,13 +185,18 @@ select:disabled {
 }
 
 select option,
-select.form-input option,
+select optgroup,
 .form-select option,
-.form-control option,
-select.pos__input option,
-select.filter-select option {
-    background-color: #141a22;
-    color: #e8edf2;
+.form-control option {
+    background-color: #141a22 !important;
+    color: #e8edf2 !important;
+}
+
+select option:checked,
+select option:hover,
+select option:focus {
+    background-color: #1e2733 !important;
+    color: #fff !important;
 }
 
 /* ===== كاردات ===== */
@@ -216,18 +247,18 @@ select.filter-select option {
 
 /* ===== فورمات ===== */
 .form-control, .form-select {
-    background: #141a22;
+    background-color: #141a22 !important;
     border: 1px solid rgba(255,255,255,0.1);
-    color: #fff;
-    color-scheme: dark;
+    color: #e8edf2 !important;
+    color-scheme: dark !important;
     font-family: 'Cairo', sans-serif;
 }
 
     .form-control:focus, .form-select:focus {
-        background: #171e27;
+        background-color: #171e27 !important;
         border-color: #f97316;
         box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
-        color: #fff;
+        color: #fff !important;
     }
 
     .form-control::placeholder {
@@ -238,16 +269,16 @@ select.filter-select option {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23fb923c' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: left 14px center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23fb923c' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 14px center !important;
     padding-left: 36px;
 }
 
 .form-select option,
 .form-control option {
-    background: #141a22;
-    color: #e8edf2;
+    background-color: #141a22 !important;
+    color: #e8edf2 !important;
 }
 
 .form-label {
