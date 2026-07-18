@@ -2,6 +2,7 @@
 using ERP_API.App.IService;
 using ERP_API.Domin.CategoriesEntity;
 using ERP_API.Domin.ProductEntity;
+using ERP_API.Infrastructure.Cache;
 using ERP_API.Infrastructure.Services;
 using ERPDto.PaigingDto;
 using ERPDto.ProductsDto;
@@ -14,9 +15,15 @@ namespace ERP_API.App.Service
 {
     public class ProductService : MasterService, IProductService, IScopped
     {
-        public ProductService(DBContext context, IMapper mapper) : base(context, mapper)
+        private readonly IProductCache _productCache;
+
+        public ProductService(DBContext context, IMapper mapper, IProductCache productCache)
+            : base(context, mapper)
         {
+            _productCache = productCache;
         }
+
+        public void InvalidateProductCache() => _productCache.Invalidate();
 
         private async Task<Product?> GetFullProduct(int id)
             => await _context.Products
@@ -53,59 +60,69 @@ namespace ERP_API.App.Service
                 return null;
 
             var term = barcode.Trim();
-            var hit = await _context.ProductBarcodes
-                .AsNoTracking()
-                .Include(b => b.ProductUnit)
-                .Include(b => b.Product)
-                .FirstOrDefaultAsync(b =>
-                    b.Barcode == term
-                    && !b.IsRemoved
-                    && b.Product != null && !b.Product.IsRemoved
-                    && b.ProductUnit != null && !b.ProductUnit.IsRemoved);
-
+            var cacheKey = ProductCacheKeys.Lookup(term);
             ProductLookupDto? dto;
-            if (hit is not null)
+
+            if (_productCache.TryGet<ProductLookupDto>(cacheKey, out var cached) && cached is not null)
             {
-                dto = ToLookup(hit.Product!, hit.ProductUnit!, hit.Barcode);
+                dto = ProductCacheKeys.CloneLookup(cached);
             }
             else
             {
-                // Legacy fallback: product header barcode → base/default unit
-                var product = await _context.Products
+                var hit = await _context.ProductBarcodes
                     .AsNoTracking()
-                    .Include(p => p.Units.Where(u => !u.IsRemoved))
-                    .FirstOrDefaultAsync(p => p.Barcode == term && !p.IsRemoved);
+                    .Include(b => b.ProductUnit)
+                    .Include(b => b.Product)
+                    .FirstOrDefaultAsync(b =>
+                        b.Barcode == term
+                        && !b.IsRemoved
+                        && b.Product != null && !b.Product.IsRemoved
+                        && b.ProductUnit != null && !b.ProductUnit.IsRemoved);
 
-                if (product is null)
-                    return null;
-
-                var unit = product.Units.FirstOrDefault(u => u.IsDefaultForSale)
-                    ?? product.Units.FirstOrDefault(u => u.IsBase)
-                    ?? product.Units.OrderBy(u => u.SortOrder).FirstOrDefault();
-
-                if (unit is null)
+                if (hit is not null)
                 {
-                    dto = new ProductLookupDto
-                    {
-                        ProductId = product.Id,
-                        Name = product.Name,
-                        SKU = product.SKU,
-                        CurrentStock = product.CurrentStock,
-                        MinStockLevel = product.MinStockLevel,
-                        CategoriesId = product.CategoriesId,
-                        WarehouseId = product.WarehouseId,
-                        CostPrice = product.CostPrice,
-                        UnitId = 0,
-                        UnitName = "مفرد",
-                        UnitFactor = 1,
-                        UnitPrice = product.SellingPrice,
-                        Barcode = product.Barcode
-                    };
+                    dto = ToLookup(hit.Product!, hit.ProductUnit!, hit.Barcode);
                 }
                 else
                 {
-                    dto = ToLookup(product, unit, term);
+                    var product = await _context.Products
+                        .AsNoTracking()
+                        .Include(p => p.Units.Where(u => !u.IsRemoved))
+                        .FirstOrDefaultAsync(p => p.Barcode == term && !p.IsRemoved);
+
+                    if (product is null)
+                        return null;
+
+                    var unit = product.Units.FirstOrDefault(u => u.IsDefaultForSale)
+                        ?? product.Units.FirstOrDefault(u => u.IsBase)
+                        ?? product.Units.OrderBy(u => u.SortOrder).FirstOrDefault();
+
+                    if (unit is null)
+                    {
+                        dto = new ProductLookupDto
+                        {
+                            ProductId = product.Id,
+                            Name = product.Name,
+                            SKU = product.SKU,
+                            CurrentStock = product.CurrentStock,
+                            MinStockLevel = product.MinStockLevel,
+                            CategoriesId = product.CategoriesId,
+                            WarehouseId = product.WarehouseId,
+                            CostPrice = product.CostPrice,
+                            UnitId = 0,
+                            UnitName = "مفرد",
+                            UnitFactor = 1,
+                            UnitPrice = product.SellingPrice,
+                            Barcode = product.Barcode
+                        };
+                    }
+                    else
+                    {
+                        dto = ToLookup(product, unit, term);
+                    }
                 }
+
+                _productCache.Set(cacheKey, ProductCacheKeys.CloneLookup(dto));
             }
 
             if (warehouseId is > 0)
@@ -204,6 +221,7 @@ namespace ERP_API.App.Service
 
             _context.Products.Add(entity);
             await _context.SaveChangesAsync();
+            InvalidateProductCache();
         }
 
         public async Task DeleteProduct(int id, int userId)
@@ -231,11 +249,16 @@ namespace ERP_API.App.Service
 
             _context.Products.Entry(product).State = EntityState.Modified;
             await _context.SaveChangesAsync();
+            InvalidateProductCache();
         }
 
         public async Task<List<ProductDto>> GetAllProductsAsync(PageDto pageDto)
         {
             NormalizePaging(pageDto);
+            var cacheKey = ProductCacheKeys.PageKey("list", pageDto);
+            if (_productCache.TryGet<List<ProductDto>>(cacheKey, out var cachedList) && cachedList is not null)
+                return cachedList;
+
             var products = await ApplyProductFilters(_context.Products.AsQueryable(), pageDto)
                 .OrderByDescending(x => x.Id)
                 .Skip((pageDto.PageIndex - 1) * pageDto.PageSize)
@@ -265,11 +288,16 @@ namespace ERP_API.App.Service
                     p.Units = units.TryGetValue(p.Id, out var list) ? list : new();
             }
 
+            _productCache.Set(cacheKey, products);
             return products;
         }
 
         public async Task<ProductDto> GetProductByIdAsync(int id)
         {
+            var cacheKey = ProductCacheKeys.ById(id);
+            if (_productCache.TryGet<ProductDto>(cacheKey, out var cached) && cached is not null)
+                return cached;
+
             var product = await _context.Products
                 .Where(p => p.Id == id && !p.IsRemoved)
                 .Select(x => new ProductDto
@@ -292,6 +320,7 @@ namespace ERP_API.App.Service
 
             var units = await LoadUnitDtosByProductIdsAsync([id]);
             product.Units = units.TryGetValue(id, out var list) ? list : new();
+            _productCache.Set(cacheKey, product);
             return product;
         }
 
@@ -405,6 +434,7 @@ namespace ERP_API.App.Service
 
             _context.Products.Entry(updateProduct).State = EntityState.Modified;
             await _context.SaveChangesAsync();
+            InvalidateProductCache();
         }
 
         public async Task<List<ProductStockLadgerDto>> GetProductStockLedger(int id)
@@ -425,7 +455,11 @@ namespace ERP_API.App.Service
 
         public async Task<List<ProductDto>> GetLowStockProduct()
         {
-            return await _context.Products.Where(x => !x.IsRemoved && x.CurrentStock <= x.MinStockLevel)
+            var cacheKey = ProductCacheKeys.LowStock();
+            if (_productCache.TryGet<List<ProductDto>>(cacheKey, out var cached) && cached is not null)
+                return cached;
+
+            var list = await _context.Products.Where(x => !x.IsRemoved && x.CurrentStock <= x.MinStockLevel)
                 .Select(x => new ProductDto
                 {
                     Name = x.Name,
@@ -439,11 +473,80 @@ namespace ERP_API.App.Service
                     CategoriesId = x.CategoriesId,
                     WarehouseId = x.WarehouseId,
                 }).ToListAsync();
+
+            _productCache.Set(cacheKey, list);
+            return list;
+        }
+
+        public async Task<List<ProductDto>> SearchProductsAsync(string term, int take = 12, int? warehouseId = null)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+                return [];
+
+            take = take is < 1 ? 12 : take > 30 ? 30 : take;
+            var q = term.Trim();
+            var cacheKey = ProductCacheKeys.Search(q, take, warehouseId);
+
+            if (_productCache.TryGet<List<ProductDto>>(cacheKey, out var cached) && cached is not null)
+                return cached;
+
+            var products = await _context.Products
+                .AsNoTracking()
+                .Where(p => !p.IsRemoved && (
+                    p.Name.Contains(q)
+                    || p.Barcode.Contains(q)
+                    || p.SKU.Contains(q)
+                    || p.Barcodes.Any(b => !b.IsRemoved && b.Barcode.Contains(q))))
+                .OrderBy(p => p.Name)
+                .Take(take)
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Barcode = p.Barcode,
+                    Name = p.Name,
+                    SKU = p.SKU,
+                    CostPrice = p.CostPrice,
+                    SellingPrice = p.SellingPrice,
+                    CurrentStock = p.CurrentStock,
+                    MinStockLevel = p.MinStockLevel,
+                    CategoriesId = p.CategoriesId,
+                    WarehouseId = p.WarehouseId
+                })
+                .ToListAsync();
+
+            var ids = products.Select(p => p.Id).ToList();
+            if (ids.Count == 0)
+            {
+                _productCache.Set(cacheKey, products, expireInSeconds: 60);
+                return products;
+            }
+
+            if (warehouseId is > 0)
+            {
+                var balances = await _context.WarehouseStocks
+                    .AsNoTracking()
+                    .Where(s => ids.Contains(s.ProductId) && s.WarehouseId == warehouseId.Value && !s.IsRemoved)
+                    .ToDictionaryAsync(s => s.ProductId, s => s.Quantity);
+                foreach (var p in products)
+                    p.CurrentStock = balances.TryGetValue(p.Id, out var qty) ? qty : 0;
+            }
+
+            var units = await LoadUnitDtosByProductIdsAsync(ids);
+            foreach (var p in products)
+                p.Units = units.TryGetValue(p.Id, out var list) ? list : new();
+
+            // Shorter TTL for POS search (stock-sensitive)
+            _productCache.Set(cacheKey, products, expireInSeconds: 60);
+            return products;
         }
 
         public async Task<ProductsInfo> GetProductsInfo(PageDto pageDto)
         {
             NormalizePaging(pageDto);
+            var cacheKey = ProductCacheKeys.PageKey("info", pageDto);
+            if (_productCache.TryGet<ProductsInfo>(cacheKey, out var cachedInfo) && cachedInfo is not null)
+                return cachedInfo;
+
             var filtered = ApplyProductFilters(_context.Products.AsQueryable(), pageDto);
 
             ProductsInfo productsInfo = new ProductsInfo();
@@ -452,6 +555,7 @@ namespace ERP_API.App.Service
             productsInfo.ProductsCountLissMinStock = await filtered.CountAsync(p => p.CurrentStock < p.MinStockLevel);
             productsInfo.ProductsCostCount = await filtered.Where(p => p.CurrentStock > 0).SumAsync(p => (double?)(p.CostPrice * p.CurrentStock)) ?? 0;
             productsInfo.PageCount = (int)Math.Ceiling((double)productsInfo.TotalProducts / pageDto.PageSize);
+            _productCache.Set(cacheKey, productsInfo);
             return productsInfo;
         }
 

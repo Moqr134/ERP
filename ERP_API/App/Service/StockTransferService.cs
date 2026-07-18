@@ -14,8 +14,12 @@ namespace ERP_API.App.Service
 {
     public class StockTransferService : MasterService, IScopped, IStockTransferService
     {
-        public StockTransferService(DBContext context, IMapper mapper) : base(context, mapper)
+        private readonly IProductService _productService;
+
+        public StockTransferService(DBContext context, IMapper mapper, IProductService productService)
+            : base(context, mapper)
         {
+            _productService = productService;
         }
 
         public async Task<List<StockTransferDto>> GetTransfersAsync()
@@ -177,6 +181,7 @@ namespace ERP_API.App.Service
                 _context.StockTransfers.Add(transfer);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+                _productService.InvalidateProductCache();
 
                 var fromName = await _context.Warehouses.AsNoTracking()
                     .Where(w => w.Id == transfer.FromWarehouseId)
