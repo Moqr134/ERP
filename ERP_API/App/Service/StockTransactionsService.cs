@@ -14,8 +14,12 @@ namespace ERP_API.App.Service
 {
     public class StockTransactionsService : MasterService, IScopped, IStockTransactionsService
     {
-        public StockTransactionsService(DBContext context, IMapper mapper) : base(context, mapper)
+        private readonly IProductService _productService;
+
+        public StockTransactionsService(DBContext context, IMapper mapper, IProductService productService)
+            : base(context, mapper)
         {
+            _productService = productService;
         }
 
         public async Task<List<StockTransactionDto>> GetStockTransactionsAsync(int? warehouseId = null)
@@ -92,6 +96,7 @@ namespace ERP_API.App.Service
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+                _productService.InvalidateProductCache();
             }
             catch (DbUpdateConcurrencyException)
             {

@@ -29,87 +29,7 @@ namespace ERP_API.App.Service
             => await _productService.LookupByBarcodeAsync(barcode, warehouseId);
 
         public async Task<List<ProductDto>> SearchProductsAsync(string term, int take = 12, int? warehouseId = null)
-        {
-            if (string.IsNullOrWhiteSpace(term))
-                return [];
-
-            take = take is < 1 ? 12 : take > 30 ? 30 : take;
-            var q = term.Trim();
-
-            var products = await _context.Products
-                .AsNoTracking()
-                .Where(p => !p.IsRemoved && (
-                    p.Name.Contains(q)
-                    || p.Barcode.Contains(q)
-                    || p.SKU.Contains(q)
-                    || p.Barcodes.Any(b => !b.IsRemoved && b.Barcode.Contains(q))))
-                .OrderBy(p => p.Name)
-                .Take(take)
-                .Select(p => new ProductDto
-                {
-                    Id = p.Id,
-                    Barcode = p.Barcode,
-                    Name = p.Name,
-                    SKU = p.SKU,
-                    CostPrice = p.CostPrice,
-                    SellingPrice = p.SellingPrice,
-                    CurrentStock = p.CurrentStock,
-                    MinStockLevel = p.MinStockLevel,
-                    CategoriesId = p.CategoriesId,
-                    WarehouseId = p.WarehouseId
-                })
-                .ToListAsync();
-
-            var ids = products.Select(p => p.Id).ToList();
-            if (ids.Count == 0)
-                return products;
-
-            if (warehouseId is > 0)
-            {
-                var balances = await _context.WarehouseStocks
-                    .AsNoTracking()
-                    .Where(s => ids.Contains(s.ProductId) && s.WarehouseId == warehouseId.Value && !s.IsRemoved)
-                    .ToDictionaryAsync(s => s.ProductId, s => s.Quantity);
-                foreach (var p in products)
-                    p.CurrentStock = balances.TryGetValue(p.Id, out var qty) ? qty : 0;
-            }
-
-            var units = await _context.ProductUnits
-                .AsNoTracking()
-                .Where(u => ids.Contains(u.ProductId) && !u.IsRemoved)
-                .OrderBy(u => u.SortOrder)
-                .Select(u => new
-                {
-                    u.ProductId,
-                    Unit = new ProductUnitDto
-                    {
-                        Id = u.Id,
-                        Name = u.Name,
-                        Factor = u.Factor,
-                        SellingPrice = u.SellingPrice,
-                        IsBase = u.IsBase,
-                        IsDefaultForSale = u.IsDefaultForSale,
-                        SortOrder = u.SortOrder,
-                        Barcodes = u.Barcodes.Where(b => !b.IsRemoved)
-                            .OrderByDescending(b => b.IsPrimary)
-                            .Select(b => new ProductBarcodeDto
-                            {
-                                Id = b.Id,
-                                Barcode = b.Barcode,
-                                IsPrimary = b.IsPrimary
-                            }).ToList()
-                    }
-                })
-                .ToListAsync();
-
-            var byProduct = units.GroupBy(x => x.ProductId)
-                .ToDictionary(g => g.Key, g => g.Select(x => x.Unit).ToList());
-
-            foreach (var p in products)
-                p.Units = byProduct.TryGetValue(p.Id, out var list) ? list : new();
-
-            return products;
-        }
+            => await _productService.SearchProductsAsync(term, take, warehouseId);
 
         public async Task<SaleDto> CompleteSaleAsync(CompleteSaleModel model, int userId)
         {
@@ -273,6 +193,7 @@ namespace ERP_API.App.Service
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                _productService.InvalidateProductCache();
                 return MapSale(sale);
             }
             catch (DbUpdateConcurrencyException)

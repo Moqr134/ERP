@@ -6,15 +6,19 @@ namespace ERP_API.App.IService
 {
     public interface IProductService
     {
-        public Task<List<ProductDto>> GetAllProductsAsync(PageDto pageDto);
-        public Task<Product?> GetProductByBarcode(string Barcode);
-        public Task<ProductLookupDto?> LookupByBarcodeAsync(string barcode, int? warehouseId = null);
-        public Task<ProductDto> GetProductByIdAsync(int id);
-        public Task CreateProduct(CreateProductModel product, int userId);
-        public Task UpdateProduct(UpdateProductModel product, int userId);
-        public Task<List<ProductStockLadgerDto>> GetProductStockLedger(int id);
-        public Task<List<ProductDto>> GetLowStockProduct();
-        public Task<ProductsInfo> GetProductsInfo(PageDto pageDto);
-        public Task DeleteProduct(int id, int userId);
+        Task<List<ProductDto>> GetAllProductsAsync(PageDto pageDto);
+        Task<Product?> GetProductByBarcode(string Barcode);
+        Task<ProductLookupDto?> LookupByBarcodeAsync(string barcode, int? warehouseId = null);
+        Task<ProductDto> GetProductByIdAsync(int id);
+        Task CreateProduct(CreateProductModel product, int userId);
+        Task UpdateProduct(UpdateProductModel product, int userId);
+        Task<List<ProductStockLadgerDto>> GetProductStockLedger(int id);
+        Task<List<ProductDto>> GetLowStockProduct();
+        Task<ProductsInfo> GetProductsInfo(PageDto pageDto);
+        Task DeleteProduct(int id, int userId);
+        Task<List<ProductDto>> SearchProductsAsync(string term, int take = 12, int? warehouseId = null);
+
+        /// <summary>Invalidate cached product reads (lists, lookups, details, POS search).</summary>
+        void InvalidateProductCache();
     }
 }
