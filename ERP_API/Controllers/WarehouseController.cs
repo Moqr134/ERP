@@ -69,5 +69,21 @@ namespace ERP_API.Controllers
             await _warehouseService.DeleteWarehouseAsync(id, _UserId);
             return Ok();
         }
+
+        [HttpGet("GetStockByWarehouse/{id:int}")]
+        [Authorize(Roles = "FullAccess,GetAllWarehouses,GetStockTransactions")]
+        public async Task<IActionResult> GetStockByWarehouse(int id)
+        {
+            var stock = await _warehouseService.GetStockByWarehouseAsync(id);
+            return Ok(stock);
+        }
+
+        [HttpGet("GetBalancesByProduct/{productId:int}")]
+        [Authorize(Roles = "FullAccess,GetAllWarehouses,GetProductByIdAsync")]
+        public async Task<IActionResult> GetBalancesByProduct(int productId)
+        {
+            var balances = await _warehouseService.GetBalancesByProductAsync(productId);
+            return Ok(balances);
+        }
     }
 }

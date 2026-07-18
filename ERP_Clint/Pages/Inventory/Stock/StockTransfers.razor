@@ -1,0 +1,309 @@
+@page "/inventory/stock-transfers"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
+@using ERP_Clint.Service
+@using ERP_Clint.Service.InventoryService
+@using ERPDto.ProductsDto
+@using ERPDto.StockTransferDto
+@using ERPDto.WarehouseDto
+@attribute [Authorize(Roles = "FullAccess,GetStockTransfers")]
+@inject IStockTransferService TransferService
+@inject IWarehousesService WarehousesService
+@inject IProductService ProductService
+
+<PageTitle>تحويلات المخزون</PageTitle>
+
+<div class="page-hero page-hero--stock">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">المخزون</p>
+        <h1>تحويل بين المخازن</h1>
+        <p>نقل كميات المنتجات من مخزن إلى آخر مع تسجيل الحركات تلقائياً</p>
+    </div>
+</div>
+
+<div class="table-panel">
+    <div class="table-panel__header">
+        <h3>سجل التحويلات</h3>
+        <div class="header-actions">
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CreateStockTransfer)">
+                <Authorized>
+                    <button class="btn-primary" @onclick="OpenCreate">+ تحويل جديد</button>
+                </Authorized>
+            </AuthorizeView>
+            <button class="btn-secondary" @onclick="Reload" disabled="@isLoading">تحديث</button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="state-box">جاري تحميل التحويلات...</div>
+    }
+    else if (!string.IsNullOrEmpty(loadError))
+    {
+        <div class="state-box state-box--error">
+            ⚠ @loadError
+            <button class="btn-secondary" @onclick="Reload">إعادة المحاولة</button>
+        </div>
+    }
+    else if (transfers.Count == 0)
+    {
+        <div class="state-box">لا توجد تحويلات بعد</div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:150px">الوقت</th>
+                    <th style="width:160px">الرقم</th>
+                    <th>من</th>
+                    <th>إلى</th>
+                    <th style="width:90px">البنود</th>
+                    <th>ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in transfers)
+                {
+                    <tr>
+                        <td class="mono">@t.CreateDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="mono">@t.TransferNumber</td>
+                        <td>@t.FromWarehouseName</td>
+                        <td>@t.ToWarehouseName</td>
+                        <td>@t.Lines.Count</td>
+                        <td>@(t.Notes ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (isCreateOpen)
+{
+    <div class="modal-overlay open" @onclick="CloseCreate">
+        <div class="modal-box" @onclick:stopPropagation="true">
+            <div class="modal-box__header">
+                <h3>تحويل مخزون</h3>
+                <button type="button" class="modal-close" @onclick="CloseCreate">✕</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(createError))
+            {
+                <div class="alert-error">⚠ @createError</div>
+            }
+
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>من مخزن</label>
+                    <select class="form-input" @bind="fromWarehouseId">
+                        @foreach (var w in warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>إلى مخزن</label>
+                    <select class="form-input" @bind="toWarehouseId">
+                        @foreach (var w in warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ملاحظات</label>
+                <input class="form-input" @bind="notes" placeholder="اختياري" />
+            </div>
+
+            <div class="lines-head">
+                <strong>البنود</strong>
+                <button type="button" class="btn-secondary" @onclick="AddLine" disabled="@isSaving">+ بند</button>
+            </div>
+
+            @for (var i = 0; i < draftLines.Count; i++)
+            {
+                var idx = i;
+                var line = draftLines[idx];
+                <div class="line-row">
+                    <select class="form-input" value="@line.ProductId"
+                            @onchange="e => line.ProductId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0">
+                        <option value="0">اختر منتج</option>
+                        @foreach (var p in products)
+                        {
+                            <option value="@p.Id">@p.Name</option>
+                        }
+                    </select>
+                    <input type="number" min="1" class="form-input qty" value="@line.Quantity"
+                           @onchange="e => line.Quantity = int.TryParse(e.Value?.ToString(), out var q) ? Math.Max(1, q) : 1" />
+                    <button type="button" class="btn-secondary" @onclick="() => RemoveLine(idx)" disabled="@(draftLines.Count <= 1 || isSaving)">✕</button>
+                </div>
+            }
+
+            <div class="modal-box__footer">
+                <button type="button" class="btn-secondary" @onclick="CloseCreate" disabled="@isSaving">إلغاء</button>
+                <button type="button" class="btn-primary" @onclick="SubmitTransfer" disabled="@isSaving">
+                    @(isSaving ? "جاري التحويل..." : "تنفيذ التحويل")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<StockTransferDto> transfers = new();
+    private List<WarehouseDto> warehouses = new();
+    private List<ProductDto> products = new();
+    private bool isLoading = true;
+    private string? loadError;
+    private bool isCreateOpen;
+    private bool isSaving;
+    private string? createError;
+    private int fromWarehouseId;
+    private int toWarehouseId;
+    private string? notes;
+    private List<CreateStockTransferLineDto> draftLines = new();
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            var whTask = WarehousesService.GetAllWarehousesAsync();
+            var trTask = TransferService.GetTransfersAsync();
+            await Task.WhenAll(whTask, trTask);
+            warehouses = (await whTask).Where(w => w.IsActive).ToList();
+            transfers = await trTask;
+        }
+        catch (Exception ex)
+        {
+            loadError = ex is ApiRequestException api ? api.Message : "تعذر تحميل التحويلات";
+            transfers = new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OpenCreate()
+    {
+        createError = null;
+        notes = null;
+        draftLines = [new CreateStockTransferLineDto { Quantity = 1 }];
+        if (warehouses.Count >= 1) fromWarehouseId = warehouses[0].Id;
+        if (warehouses.Count >= 2) toWarehouseId = warehouses[1].Id;
+        else if (warehouses.Count == 1) toWarehouseId = warehouses[0].Id;
+
+        try
+        {
+            products = await ProductService.GetAllProductsAsync(new ERPDto.PaigingDto.PageDto { PageIndex = 1, PageSize = 300 })
+                       ?? new();
+        }
+        catch
+        {
+            products = new();
+        }
+
+        isCreateOpen = true;
+    }
+
+    private void CloseCreate()
+    {
+        if (isSaving) return;
+        isCreateOpen = false;
+    }
+
+    private void AddLine() => draftLines.Add(new CreateStockTransferLineDto { Quantity = 1 });
+
+    private void RemoveLine(int index)
+    {
+        if (draftLines.Count <= 1) return;
+        if (index >= 0 && index < draftLines.Count)
+            draftLines.RemoveAt(index);
+    }
+
+    private async Task SubmitTransfer()
+    {
+        createError = null;
+        if (fromWarehouseId <= 0 || toWarehouseId <= 0)
+        {
+            createError = "اختر مخزني المصدر والوجهة";
+            return;
+        }
+        if (fromWarehouseId == toWarehouseId)
+        {
+            createError = "مخزن المصدر والوجهة يجب أن يختلفا";
+            return;
+        }
+
+        var lines = draftLines.Where(l => l.ProductId > 0 && l.Quantity > 0).ToList();
+        if (lines.Count == 0)
+        {
+            createError = "أضف منتجاً واحداً على الأقل";
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            await TransferService.CreateTransferAsync(new CreateStockTransferModel
+            {
+                FromWarehouseId = fromWarehouseId,
+                ToWarehouseId = toWarehouseId,
+                Notes = notes,
+                Lines = lines
+            });
+            isCreateOpen = false;
+            await Reload();
+        }
+        catch (Exception ex)
+        {
+            createError = ex is ApiRequestException api ? api.Message : "تعذر تنفيذ التحويل";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
+
+<style>
+    .table-panel { background:#141a22; border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden; }
+    .table-panel__header { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid rgba(255,255,255,0.08); gap:12px; flex-wrap:wrap; }
+    .table-panel__header h3 { margin:0; color:#fff; font-size:15px; font-weight:800; }
+    .header-actions { display:flex; gap:8px; }
+    table { width:100%; border-collapse:collapse; }
+    thead th { background:rgba(255,255,255,0.03); color:rgba(255,255,255,0.55); font-size:12px; padding:12px 16px; text-align:right; border-bottom:1px solid rgba(255,255,255,0.08); }
+    tbody td { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.04); color:#e8edf2; font-size:13px; }
+    .mono { font-family:ui-monospace, monospace; direction:ltr; display:inline-block; }
+    .state-box { padding:28px; text-align:center; color:rgba(255,255,255,0.45); }
+    .state-box--error { color:#f87171; display:flex; flex-direction:column; gap:12px; align-items:center; }
+    .btn-primary { background:linear-gradient(135deg,#f97316,#c2410c); border:none; color:#fff; padding:9px 16px; border-radius:10px; font-family:'Cairo',sans-serif; font-weight:700; cursor:pointer; }
+    .btn-secondary { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e8edf2; padding:9px 16px; border-radius:10px; font-family:'Cairo',sans-serif; cursor:pointer; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; z-index:100; }
+    .modal-box { width:min(640px,96vw); max-height:90vh; overflow:auto; background:#141a22; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:22px; color:#e8edf2; font-family:'Cairo',sans-serif; }
+    .modal-box__header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    .modal-box__header h3 { margin:0; color:#fff; }
+    .modal-close { background:none; border:none; color:rgba(255,255,255,0.5); font-size:18px; cursor:pointer; }
+    .alert-error { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#f87171; padding:10px 14px; border-radius:10px; margin-bottom:12px; }
+    .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-group { margin-bottom:12px; }
+    .form-group label { display:block; font-size:12px; font-weight:700; color:rgba(255,255,255,0.55); margin-bottom:6px; }
+    .form-input { width:100%; box-sizing:border-box; padding:10px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; font-family:'Cairo',sans-serif; }
+    .lines-head { display:flex; justify-content:space-between; align-items:center; margin:8px 0 10px; }
+    .line-row { display:grid; grid-template-columns:1fr 110px 44px; gap:8px; margin-bottom:8px; }
+    .line-row .qty { text-align:left; direction:ltr; }
+    .modal-box__footer { display:flex; gap:10px; margin-top:14px; }
+    .modal-box__footer button { flex:1; }
+    @@media (max-width:640px) { .form-row-2, .line-row { grid-template-columns:1fr; } }
+</style>

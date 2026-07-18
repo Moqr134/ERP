@@ -30,9 +30,9 @@ namespace ERP_API.Controllers
 
         [HttpGet("GetStockTransactions")]
         [Authorize(Roles = "FullAccess,GetStockTransactions")]
-        public async Task<IActionResult> GetStockTransactions()
+        public async Task<IActionResult> GetStockTransactions([FromQuery] int? warehouseId = null)
         {
-            var list = await _stockTransactionsService.GetStockTransactionsAsync();
+            var list = await _stockTransactionsService.GetStockTransactionsAsync(warehouseId);
             return Ok(list);
         }
     }

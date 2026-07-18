@@ -19,6 +19,7 @@ namespace ERP_API.Domin.SalesEntity
             builder.Property(x => x.ChangeAmount).IsRequired();
             builder.Property(x => x.Notes).HasMaxLength(250);
             builder.Property(x => x.Status).IsRequired().HasMaxLength(20);
+            builder.Property(x => x.WarehouseId).IsRequired();
             builder.Property(x => x.CreateDate).IsRequired();
             builder.Property(x => x.CreateUserId);
             builder.Property(x => x.UpdateDate);
@@ -28,6 +29,7 @@ namespace ERP_API.Domin.SalesEntity
             builder.Property(x => x.RemoveUserId);
             builder.Property(x => x.Version).IsRowVersion();
             builder.HasQueryFilter(x => x.IsRemoved == false);
+            builder.HasOne(x => x.Warehouse).WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
             builder.HasMany(x => x.Lines).WithOne(x => x.Sale).HasForeignKey(x => x.SaleId).OnDelete(DeleteBehavior.Cascade);
         }
     }

@@ -83,6 +83,8 @@ public static class PermissionCatalog
         [
             new(PermissionNames.GetStockTransactions, "عرض حركات المخزون"),
             new(PermissionNames.AddStockTransaction, "إضافة حركة مخزون"),
+            new(PermissionNames.GetStockTransfers, "عرض تحويلات المخزون"),
+            new(PermissionNames.CreateStockTransfer, "إنشاء تحويل مخزون"),
         ]),
 
         new("sales", "المبيعات",

@@ -1,4 +1,5 @@
 using Common.App;
+using ERP_API.Domin.WarehouseEntity;
 
 namespace ERP_API.Domin.SalesEntity
 {
@@ -13,6 +14,11 @@ namespace ERP_API.Domin.SalesEntity
         public double ChangeAmount { get; set; }
         public string? Notes { get; set; }
         public string Status { get; set; } = "Completed";
+
+        /// <summary>Warehouse stock is deducted from for this sale.</summary>
+        public int WarehouseId { get; set; }
+        public Warehouse? Warehouse { get; set; }
+
         public ICollection<SaleLine> Lines { get; set; } = new List<SaleLine>();
     }
 }

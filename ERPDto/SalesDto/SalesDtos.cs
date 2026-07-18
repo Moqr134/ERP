@@ -38,6 +38,9 @@ namespace ERPDto.SalesDto
 
         [StringLength(250)]
         public string? Notes { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "يجب اختيار مخزن البيع")]
+        public int WarehouseId { get; set; }
     }
 
     public class SaleLineDto
@@ -67,6 +70,8 @@ namespace ERPDto.SalesDto
         public double ChangeAmount { get; set; }
         public string? Notes { get; set; }
         public string Status { get; set; } = string.Empty;
+        public int WarehouseId { get; set; }
+        public string? WarehouseName { get; set; }
         public DateTime CreateDate { get; set; }
         public int? CreateUserId { get; set; }
         public List<SaleLineDto> Lines { get; set; } = new();

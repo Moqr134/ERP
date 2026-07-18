@@ -12,5 +12,6 @@ namespace ERP_API.Domin.WarehouseEntity
         public bool IsActive { get; set; } = true;
         public string? Notes { get; set; }
         public ICollection<Product> Products { get; set; } = new List<Product>();
+        public ICollection<WarehouseStock> Stocks { get; set; } = new List<WarehouseStock>();
     }
 }

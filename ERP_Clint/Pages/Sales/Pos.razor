@@ -5,11 +5,14 @@
 @using ERP_Clint.Security
 @using ERP_Clint.Service
 @using ERP_Clint.Service.SalesService
+@using ERP_Clint.Service.InventoryService
+@using ERPDto.WarehouseDto
 @using ERP_Clint.Helpers
 @using ERPDto.ProductsDto
 @using ERPDto.SalesDto
 @attribute [Authorize(Roles = "FullAccess,CompleteSale")]
 @inject ISalesService SalesService
+@inject IWarehousesService WarehousesService
 @inject IJSRuntime Js
 
 <PageTitle>نقطة البيع</PageTitle>
@@ -17,6 +20,27 @@
 <div class="pos">
     <div class="pos__workspace">
         <div class="pos__scan">
+            <div class="pos__wh">
+                <label>مخزن البيع</label>
+                <select class="pos__input" @bind="selectedWarehouseId" @bind:after="OnWarehouseChanged" disabled="@(isBusy || cart.Count > 0)">
+                    @if (warehouses.Count == 0)
+                    {
+                        <option value="0">لا توجد مخازن</option>
+                    }
+                    else
+                    {
+                        @foreach (var w in warehouses)
+                        {
+                            <option value="@w.Id">@w.Name (@w.Code)</option>
+                        }
+                    }
+                </select>
+                @if (cart.Count > 0)
+                {
+                    <span class="pos__wh-hint">فرّغ السلة لتغيير المخزن</span>
+                }
+            </div>
+
             <label class="pos__label" for="barcodeInput">باركود / بحث منتج</label>
             <div class="pos__scan-row">
                 <input id="barcodeInput"
@@ -251,6 +275,20 @@
         margin-bottom: 8px;
     }
 
+    .pos__wh {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+    .pos__wh label {
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(255,255,255,0.5);
+    }
+    .pos__wh-hint {
+        font-size: 11px;
+        color: rgba(251,146,60,0.85);
+    }
     .pos__scan-row {
         display: flex;
         gap: 10px;
@@ -607,6 +645,39 @@
     private bool isSearching;
     private SaleDto? lastSale;
     private CancellationTokenSource? searchCts;
+    private List<WarehouseDto> warehouses = new();
+    private int selectedWarehouseId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWarehousesAsync();
+    }
+
+    private async Task LoadWarehousesAsync()
+    {
+        try
+        {
+            warehouses = (await WarehousesService.GetAllWarehousesAsync())
+                .Where(w => w.IsActive)
+                .OrderBy(w => w.Name)
+                .ToList();
+            if (selectedWarehouseId == 0 && warehouses.Count > 0)
+                selectedWarehouseId = warehouses[0].Id;
+        }
+        catch
+        {
+            warehouses = new();
+        }
+    }
+
+    private async Task OnWarehouseChanged()
+    {
+        cart.Clear();
+        searchResults = new();
+        scanError = null;
+        checkoutError = null;
+        await Task.CompletedTask;
+    }
 
     private double SubTotal => Math.Round(cart.Sum(c => c.LineTotal), MidpointRounding.AwayFromZero);
     private double Total => Math.Round(Math.Max(0, SubTotal - Math.Max(0, discount)), MidpointRounding.AwayFromZero);
@@ -657,10 +728,16 @@
             return;
         }
 
+        if (selectedWarehouseId <= 0)
+        {
+            scanError = "اختر مخزن البيع أولاً";
+            return;
+        }
+
         try
         {
             isSearching = true;
-            var byBarcode = await SalesService.LookupProductByBarcodeAsync(term);
+            var byBarcode = await SalesService.LookupProductByBarcodeAsync(term, selectedWarehouseId);
             if (byBarcode is not null)
             {
                 AddLookup(byBarcode);
@@ -691,7 +768,7 @@
         {
             isSearching = true;
             scanError = null;
-            var products = await SalesService.SearchProductsAsync(term);
+            var products = await SalesService.SearchProductsAsync(term, selectedWarehouseId);
 
             if (token.IsCancellationRequested) return;
 
@@ -871,6 +948,12 @@
             return;
         }
 
+        if (selectedWarehouseId <= 0)
+        {
+            checkoutError = "يجب اختيار مخزن البيع";
+            return;
+        }
+
         isBusy = true;
         try
         {
@@ -880,6 +963,7 @@
                 PaidAmount = paymentMethod == "Cash" ? paidAmount : Total,
                 PaymentMethod = paymentMethod,
                 Notes = notes,
+                WarehouseId = selectedWarehouseId,
                 Lines = cart.Select(c => new CompleteSaleLineDto
                 {
                     ProductId = c.ProductId,

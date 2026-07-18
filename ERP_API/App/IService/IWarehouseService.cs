@@ -9,5 +9,7 @@ namespace ERP_API.App.IService
         Task AddWarehouseAsync(WarehouseModel model, int createUserId);
         Task EditWarehouseAsync(WarehouseModel model, int updateUserId);
         Task DeleteWarehouseAsync(int id, int deleteUserId);
+        Task<List<WarehouseStockDto>> GetStockByWarehouseAsync(int warehouseId);
+        Task<List<ProductWarehouseBalanceDto>> GetBalancesByProductAsync(int productId);
     }
 }

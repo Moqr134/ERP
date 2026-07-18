@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
+using ERP_API.App.Inventory;
 using ERP_API.App.IService;
 using ERP_API.Domin.ProductEntity;
 using ERP_API.Domin.StockTransactionsEntity;
+using ERP_API.Domin.WarehouseEntity;
 using ERP_API.Infrastructure.Services;
 using ERPDto.StockTransactionDto;
 using Infrastructure.ORM;
@@ -16,66 +18,78 @@ namespace ERP_API.App.Service
         {
         }
 
-        public async Task<List<StockTransactionDto>> GetStockTransactionsAsync()
+        public async Task<List<StockTransactionDto>> GetStockTransactionsAsync(int? warehouseId = null)
         {
-            List<StockTransactionDto> list = await (
+            var query =
                 from s in _context.StockTransactions
                 join p in _context.Products.IgnoreQueryFilters() on s.ProductId equals p.Id into productJoin
                 from p in productJoin.DefaultIfEmpty()
+                join w in _context.Warehouses.IgnoreQueryFilters() on s.WarehouseId equals w.Id into whJoin
+                from w in whJoin.DefaultIfEmpty()
                 orderby s.CreateDate descending
                 select new StockTransactionDto
                 {
                     Id = s.Id,
                     ProductId = s.ProductId,
                     ProductName = p != null ? p.Name : "المنتج محذوف",
+                    WarehouseId = s.WarehouseId,
+                    WarehouseName = w != null ? w.Name : "—",
+                    RelatedWarehouseId = s.RelatedWarehouseId,
                     Quantity = s.Quantity,
                     TransactionType = s.TransactionType,
                     ReferenceId = s.ReferenceId,
                     Notes = s.Notes,
                     CreateDate = s.CreateDate,
                     CreateUserId = s.CreateUserId
-                })
-                .Take(500)
-                .ToListAsync();
-            return list;
+                };
+
+            if (warehouseId is > 0)
+                query = query.Where(x => x.WarehouseId == warehouseId.Value);
+
+            return await query.Take(500).ToListAsync();
         }
-        private async Task<Product?> GetProductAsync(int Id)
+
+        private async Task<Product?> GetProductAsync(int id)
         {
-            Product? product = await _context.Products.FirstOrDefaultAsync(p => p.Id == Id && !p.IsRemoved);
-            return product;
+            return await _context.Products.FirstOrDefaultAsync(p => p.Id == id && !p.IsRemoved);
         }
-        public async Task AddStockTransaction(CreateStockTransactionsModel Model, int userId)
+
+        public async Task AddStockTransaction(CreateStockTransactionsModel model, int userId)
         {
-            if (Model.Quantity <= 0)
+            if (model.Quantity <= 0)
                 throw new InvalidOperationException("الكمية يجب أن تكون أكبر من صفر");
 
-            var transactionType = (Model.TransactionType ?? string.Empty).Trim();
+            if (model.WarehouseId <= 0)
+                throw new InvalidOperationException("يجب اختيار المخزن");
+
+            var transactionType = (model.TransactionType ?? string.Empty).Trim();
             if (transactionType is not ("In" or "Out"))
                 throw new InvalidOperationException("نوع الفاتورة غير صحيح");
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                Product? product = await GetProductAsync(Model.ProductId);
+                await WarehouseStockHelper.EnsureWarehouseActiveAsync(_context, model.WarehouseId);
+
+                Product? product = await GetProductAsync(model.ProductId);
                 if (product == null) throw new KeyNotFoundException("لم يتم العثور على المنتج");
 
-                if (transactionType == "Out")
-                {
-                    if (Model.Quantity > product.CurrentStock)
-                        throw new InvalidOperationException("الكمية الموجودة في الخزن اقل من الكمية الصادرة");
-                    product.CurrentStock -= Model.Quantity;
-                }
-                else
-                {
-                    product.CurrentStock += Model.Quantity;
-                }
+                var now = DateTime.UtcNow.AddHours(3);
+                var delta = transactionType == "In" ? model.Quantity : -model.Quantity;
+                await WarehouseStockHelper.ApplyDeltaAsync(
+                    _context, product, model.WarehouseId, delta, userId, now, product.Name);
 
-                StockTransactions stockTransactions = _mapper.Map<StockTransactions>(Model);
+                var stockTransactions = _mapper.Map<StockTransactions>(model);
                 stockTransactions.TransactionType = transactionType;
-                stockTransactions.CreateDate = DateTime.UtcNow.AddHours(3);
+                stockTransactions.WarehouseId = model.WarehouseId;
+                stockTransactions.ReferenceId = string.IsNullOrWhiteSpace(model.ReferenceId)
+                    ? $"STK-{now:yyyyMMddHHmmss}"
+                    : model.ReferenceId.Trim();
+                stockTransactions.Notes = model.Notes?.Trim() ?? string.Empty;
+                stockTransactions.CreateDate = now;
                 stockTransactions.CreateUserId = userId;
-                _context.Products.Entry(product).State = EntityState.Modified;
                 _context.StockTransactions.Add(stockTransactions);
+
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
             }

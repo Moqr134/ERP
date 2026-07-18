@@ -117,6 +117,10 @@
             </div>
             <div class="sale-modal__meta">
                 <span>@(selectedSale.PaymentMethod == "Cash" ? "نقدي" : "بطاقة")</span>
+                @if (!string.IsNullOrWhiteSpace(selectedSale.WarehouseName))
+                {
+                    <span>المخزن: @selectedSale.WarehouseName</span>
+                }
                 <span class="mono">@selectedSale.CreateDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
             </div>
             <table>

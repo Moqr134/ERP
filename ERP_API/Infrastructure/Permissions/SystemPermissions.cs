@@ -69,6 +69,8 @@ public static class SystemPermissions
     // Stock
     public const string AddStockTransaction = "AddStockTransaction";
     public const string GetStockTransactions = "GetStockTransactions";
+    public const string CreateStockTransfer = "CreateStockTransfer";
+    public const string GetStockTransfers = "GetStockTransfers";
 
     // Sales / POS
     public const string CompleteSale = "CompleteSale";
@@ -141,6 +143,8 @@ public static class SystemPermissions
 
         AddStockTransaction,
         GetStockTransactions,
+        CreateStockTransfer,
+        GetStockTransfers,
 
         CompleteSale,
         GetSales,

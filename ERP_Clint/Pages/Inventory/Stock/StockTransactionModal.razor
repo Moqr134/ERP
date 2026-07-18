@@ -14,6 +14,17 @@
             }
 
             <div class="form-group">
+                <label>المخزن</label>
+                <InputSelect @bind-Value="formModel.WarehouseId" class="form-input">
+                    <option value="0">اختر المخزن</option>
+                    @foreach (var w in warehouses)
+                    {
+                        <option value="@w.Id">@w.Name (@w.Code)</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="form-group">
                 <label>المنتج</label>
                 <div class="search-select">
                     <input class="search-input form-input" placeholder="ابحث عن منتج بالاسم أو الكود..." @bind="productSearch" @bind:event="oninput" @onfocus="() => OpenDropdown()" />

@@ -8,6 +8,9 @@ namespace ERPDto.StockTransactionDto
         [Range(1, int.MaxValue, ErrorMessage = "يجب اختيار منتج")]
         public int ProductId { get; set; }
 
+        [Range(1, int.MaxValue, ErrorMessage = "يجب اختيار المخزن")]
+        public int WarehouseId { get; set; }
+
         [Range(1, int.MaxValue, ErrorMessage = "الكمية يجب أن تكون أكبر من صفر")]
         public int Quantity { get; set; }
 
