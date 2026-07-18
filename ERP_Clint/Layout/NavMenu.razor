@@ -82,6 +82,41 @@
         </Authorized>
     </AuthorizeView>
 
+    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompletePurchaseReceipt, PermissionNames.GetPurchaseReceipts)">
+        <Authorized>
+            <li class="nav-menu__item">
+                <button type="button" class="nav-menu__link nav-menu__toggle @(isPurchasesOpen ? "open" : "")" @onclick="TogglePurchases">
+                    <span class="nav-icon">📥</span>
+                    <span>المشتريات</span>
+                    <span class="nav-arrow">›</span>
+                </button>
+
+                <ul class="nav-submenu @(isPurchasesOpen ? "open" : "")">
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompletePurchaseReceipt)" Context="recvCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="purchases/receive">
+                                    <span class="nav-icon">📦</span>
+                                    <span>استلام من مورد</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetPurchaseReceipts)" Context="phistCtx">
+                        <Authorized>
+                            <li>
+                                <NavLink class="nav-submenu__link" href="purchases/history">
+                                    <span class="nav-icon">🧾</span>
+                                    <span>سجل الاستلام</span>
+                                </NavLink>
+                            </li>
+                        </Authorized>
+                    </AuthorizeView>
+                </ul>
+            </li>
+        </Authorized>
+    </AuthorizeView>
+
     <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetAllCategories, PermissionNames.GetAllProductsAsync, PermissionNames.GetAllSuppliers, PermissionNames.GetAllWarehouses, PermissionNames.GetStockTransactions, PermissionNames.GetStockTransfers)">
         <Authorized>
             <li class="nav-menu__item">
@@ -391,6 +426,7 @@
     private bool isInventoryOpen;
     private bool isUsersOpen;
     private bool isSalesOpen;
+    private bool isPurchasesOpen;
     private bool isReportsOpen;
 
     protected override void OnInitialized()
@@ -407,6 +443,10 @@
         if (currentPath.Contains("/sales", StringComparison.OrdinalIgnoreCase))
         {
             isSalesOpen = true;
+        }
+        if (currentPath.Contains("/purchases", StringComparison.OrdinalIgnoreCase))
+        {
+            isPurchasesOpen = true;
         }
         if (currentPath.Contains("/reports", StringComparison.OrdinalIgnoreCase))
         {
@@ -427,6 +467,11 @@
     private void ToggleSales()
     {
         isSalesOpen = !isSalesOpen;
+    }
+
+    private void TogglePurchases()
+    {
+        isPurchasesOpen = !isPurchasesOpen;
     }
 
     private void ToggleReports()

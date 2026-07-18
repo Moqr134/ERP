@@ -1,0 +1,297 @@
+@page "/purchases/history"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
+@using ERP_Clint.Service
+@using ERP_Clint.Service.PurchasesService
+@using ERPDto.PaigingDto
+@using ERPDto.PurchaseDto
+@attribute [Authorize(Roles = "FullAccess,GetPurchaseReceipts")]
+@inject IPurchasesService PurchasesService
+
+<PageTitle>سجل الاستلام</PageTitle>
+
+<div class="page-hero page-hero--purchases">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">المشتريات</p>
+        <h1>سجل الاستلام</h1>
+        <p>متابعة سندات الاستلام من الموردين</p>
+    </div>
+</div>
+
+<div class="table-panel">
+    <div class="table-panel__header">
+        <h3>سندات الاستلام</h3>
+        <div class="header-actions">
+            <div class="search-box">
+                <span>🔍</span>
+                <input placeholder="ابحث برقم السند أو المورد..." @bind="search" @bind:event="oninput"
+                       @onkeydown="OnSearchKey" />
+            </div>
+            <div class="header-actions__btns">
+                <button class="btn-secondary" @onclick="Search">بحث</button>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompletePurchaseReceipt)">
+                    <Authorized>
+                        <a class="btn-primary" href="purchases/receive">استلام جديد</a>
+                    </Authorized>
+                </AuthorizeView>
+                <button class="btn-secondary" @onclick="Reload">تحديث</button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="state-box">جاري تحميل السندات...</div>
+    }
+    else if (!string.IsNullOrEmpty(loadError))
+    {
+        <div class="state-box state-box--error">
+            ⚠ @loadError
+            <button class="btn-secondary" @onclick="Reload">إعادة المحاولة</button>
+        </div>
+    }
+    else if (receipts is null || receipts.Count == 0)
+    {
+        <div class="state-box">لا توجد سندات حالياً</div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:150px">الوقت</th>
+                    <th style="width:150px">رقم السند</th>
+                    <th>المورد</th>
+                    <th style="width:120px">المخزن</th>
+                    <th style="width:100px">الخصم</th>
+                    <th style="width:120px">الإجمالي</th>
+                    <th style="width:90px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in receipts)
+                {
+                    <tr>
+                        <td class="mono">@r.CreateDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="mono">@r.ReceiptNumber</td>
+                        <td>@(r.SupplierName ?? "—")</td>
+                        <td>@(r.WarehouseName ?? "—")</td>
+                        <td class="mono">@r.Discount.ToString("N0")</td>
+                        <td class="mono">@r.Total.ToString("N0")</td>
+                        <td>
+                            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetPurchaseReceiptById)" Context="detailCtx">
+                                <Authorized>
+                                    <button class="btn-secondary" style="padding:6px 10px; font-size:12px;" @onclick="() => OpenDetails(r.Id)">تفاصيل</button>
+                                </Authorized>
+                            </AuthorizeView>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (pageCount > 1)
+        {
+            <div class="purchases-pager">
+                <button class="btn-secondary" disabled="@(pageIndex <= 1)" @onclick="PrevPage">السابق</button>
+                <span>@pageIndex / @pageCount</span>
+                <button class="btn-secondary" disabled="@(pageIndex >= pageCount)" @onclick="NextPage">التالي</button>
+            </div>
+        }
+    }
+</div>
+
+@if (selected is not null)
+{
+    <div class="sale-modal-overlay" @onclick="CloseDetails">
+        <div class="sale-modal" @onclick:stopPropagation="true">
+            <div class="sale-modal__header">
+                <div>
+                    <h3>تفاصيل الاستلام</h3>
+                    <div class="mono sale-modal__inv">@selected.ReceiptNumber</div>
+                </div>
+                <button type="button" class="btn-secondary" @onclick="CloseDetails">إغلاق</button>
+            </div>
+            <div class="sale-modal__meta">
+                <span>المورد: @(selected.SupplierName ?? "—")</span>
+                @if (!string.IsNullOrWhiteSpace(selected.SupplierInvoiceNumber))
+                {
+                    <span>فاتورة المورد: @selected.SupplierInvoiceNumber</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(selected.WarehouseName))
+                {
+                    <span>المخزن: @selected.WarehouseName</span>
+                }
+                <span class="mono">@selected.CreateDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th style="width:100px">الكمية</th>
+                        <th style="width:100px">الكلفة</th>
+                        <th style="width:110px">الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in selected.Lines)
+                    {
+                        <tr>
+                            <td>
+                                <div>@line.ProductName</div>
+                                <div class="mono" style="font-size:12px; opacity:.5;">@line.Barcode</div>
+                            </td>
+                            <td>
+                                @line.Quantity @line.UnitName
+                                @if (line.UnitFactor > 1)
+                                {
+                                    <div style="font-size:11px; opacity:.45;">= @line.BaseQuantity مفرد</div>
+                                }
+                            </td>
+                            <td class="mono">@line.UnitCost.ToString("N0")</td>
+                            <td class="mono">@line.LineTotal.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="sale-modal__totals">
+                <div><span>المجموع</span><strong class="mono">@selected.SubTotal.ToString("N0")</strong></div>
+                <div><span>الخصم</span><strong class="mono">@selected.Discount.ToString("N0")</strong></div>
+                <div class="sale-modal__total"><span>الصافي</span><strong class="mono">@selected.Total.ToString("N0")</strong></div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .page-hero--purchases .page-hero__glow {
+        background: radial-gradient(500px 220px at 20% 30%, rgba(56,189,248,0.18), transparent 60%);
+    }
+    .table-panel {
+        background: #141a22;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    .table-panel__header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; gap: 12px;
+    }
+    .table-panel__header h3 { margin:0; font-size:15px; color:#fff; }
+    .header-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .header-actions__btns { display:flex; gap:8px; flex-wrap:wrap; }
+    .search-box {
+        display:flex; align-items:center; gap:8px; background:#141a22; border:1px solid rgba(255,255,255,0.1);
+        border-radius:10px; padding:8px 12px; color-scheme:dark;
+    }
+    .search-box input { background:none; border:none; outline:none; color:#fff; font-family:'Cairo',sans-serif; min-width:220px; }
+    table { width:100%; border-collapse:collapse; }
+    thead th {
+        background:rgba(255,255,255,0.03); color:rgba(255,255,255,0.55); font-size:12px;
+        padding:12px 16px; text-align:right; border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+    tbody td { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.06); color:#e8edf2; }
+    tbody tr:hover { background:rgba(56,189,248,0.04); }
+    .state-box { padding:40px; text-align:center; color:rgba(255,255,255,0.45); }
+    .state-box--error { color:#f87171; display:flex; flex-direction:column; gap:12px; align-items:center; }
+    .purchases-pager { display:flex; justify-content:center; align-items:center; gap:12px; padding:14px; }
+    .mono { font-variant-numeric: tabular-nums; }
+    .sale-modal-overlay {
+        position:fixed; inset:0; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; z-index:100;
+    }
+    .sale-modal {
+        width:min(640px,96vw); max-height:90vh; overflow:auto; background:#141a22;
+        border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:22px; color:#e8edf2;
+    }
+    .sale-modal__header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+    .sale-modal__header h3 { margin:0; color:#fff; font-size:16px; }
+    .sale-modal__inv { font-size:13px; opacity:.55; margin-top:4px; }
+    .sale-modal__meta { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; font-size:12px; color:rgba(255,255,255,0.55); }
+    .sale-modal__totals { margin-top:14px; display:flex; flex-direction:column; gap:8px; }
+    .sale-modal__totals > div { display:flex; justify-content:space-between; }
+    .sale-modal__total { padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); font-size:16px; }
+</style>
+
+@code {
+    private List<PurchaseReceiptDto>? receipts;
+    private PurchaseReceiptDto? selected;
+    private string search = string.Empty;
+    private string? loadError;
+    private bool isLoading = true;
+    private int pageIndex = 1;
+    private int pageSize = 15;
+    private int pageCount;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            var result = await PurchasesService.GetReceiptsAsync(new PageDto
+            {
+                PageIndex = pageIndex,
+                PageSize = pageSize,
+                SearchTerm = search
+            });
+            receipts = result?.Items ?? new();
+            pageCount = result?.PageCount ?? 0;
+            pageIndex = result?.PageIndex ?? pageIndex;
+        }
+        catch
+        {
+            loadError = "تعذر تحميل سندات الاستلام";
+            receipts = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task Search()
+    {
+        pageIndex = 1;
+        await Load();
+    }
+
+    private async Task OnSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Search();
+    }
+
+    private async Task Reload() => await Load();
+
+    private async Task PrevPage()
+    {
+        if (pageIndex <= 1) return;
+        pageIndex--;
+        await Load();
+    }
+
+    private async Task NextPage()
+    {
+        if (pageIndex >= pageCount) return;
+        pageIndex++;
+        await Load();
+    }
+
+    private async Task OpenDetails(int id)
+    {
+        try
+        {
+            selected = await PurchasesService.GetReceiptByIdAsync(id);
+        }
+        catch
+        {
+            loadError = "تعذر تحميل التفاصيل";
+        }
+    }
+
+    private void CloseDetails() => selected = null;
+}

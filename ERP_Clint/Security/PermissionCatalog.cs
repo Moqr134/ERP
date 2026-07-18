@@ -94,6 +94,13 @@ public static class PermissionCatalog
             new(PermissionNames.GetSaleById, "عرض تفاصيل فاتورة"),
         ]),
 
+        new("purchases", "المشتريات",
+        [
+            new(PermissionNames.CompletePurchaseReceipt, "استلام من مورد"),
+            new(PermissionNames.GetPurchaseReceipts, "عرض سندات الاستلام"),
+            new(PermissionNames.GetPurchaseReceiptById, "عرض تفاصيل سند استلام"),
+        ]),
+
         new("reports", "التقارير",
         [
             new(PermissionNames.GetReportsOverview, "التقرير الشامل"),

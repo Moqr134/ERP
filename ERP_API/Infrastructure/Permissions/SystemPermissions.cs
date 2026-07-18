@@ -77,6 +77,11 @@ public static class SystemPermissions
     public const string GetSales = "GetSales";
     public const string GetSaleById = "GetSaleById";
 
+    // Purchases / supplier receive
+    public const string CompletePurchaseReceipt = "CompletePurchaseReceipt";
+    public const string GetPurchaseReceipts = "GetPurchaseReceipts";
+    public const string GetPurchaseReceiptById = "GetPurchaseReceiptById";
+
     // Reports
     public const string GetReportsOverview = "GetReportsOverview";
     public const string GetProductsReport = "GetProductsReport";
@@ -149,6 +154,10 @@ public static class SystemPermissions
         CompleteSale,
         GetSales,
         GetSaleById,
+
+        CompletePurchaseReceipt,
+        GetPurchaseReceipts,
+        GetPurchaseReceiptById,
 
         GetReportsOverview,
         GetProductsReport,
