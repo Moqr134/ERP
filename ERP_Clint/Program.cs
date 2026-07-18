@@ -20,6 +20,7 @@ builder.Services.AddScoped<IWarehousesService, WarehousesService>();
 builder.Services.AddScoped<IStockTransactionsService, StockTransactionsService>();
 builder.Services.AddScoped<IStockTransferService, StockTransferService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
+builder.Services.AddScoped<ERP_Clint.Service.PurchasesService.IPurchasesService, ERP_Clint.Service.PurchasesService.PurchasesService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 builder.Services.AddScoped<IRoleAdminService, RoleAdminService>();
 builder.Services.AddScoped<ERP_Clint.Service.ReportsService.IReportsService, ERP_Clint.Service.ReportsService.ReportsService>();

@@ -126,6 +126,14 @@
                         </a>
                     </Authorized>
                 </AuthorizeView>
+                <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.CompletePurchaseReceipt)">
+                    <Authorized>
+                        <a class="quick-link" href="purchases/receive">
+                            <span>📥</span>
+                            <span>استلام من مورد</span>
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
                 <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetReportsOverview, PermissionNames.GetSalesReport)">
                     <Authorized>
                         <a class="quick-link" href="reports">

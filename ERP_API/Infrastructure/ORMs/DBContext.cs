@@ -2,6 +2,7 @@
 using ERP_API.Domin.PermartionEntity;
 using ERP_API.Domin.PermissionsEntity;
 using ERP_API.Domin.ProductEntity;
+using ERP_API.Domin.PurchaseEntity;
 using ERP_API.Domin.RoleEntity;
 using ERP_API.Domin.StockTransactionsEntity;
 using ERP_API.Domin.StockTransferEntity;
@@ -39,6 +40,8 @@ public class DBContext : DbContext
         modelBuilder.ApplyConfiguration(new WarehouseStockMap());
         modelBuilder.ApplyConfiguration(new StockTransferMap());
         modelBuilder.ApplyConfiguration(new StockTransferLineMap());
+        modelBuilder.ApplyConfiguration(new PurchaseReceiptMap());
+        modelBuilder.ApplyConfiguration(new PurchaseReceiptLineMap());
     }
     public DbSet<Users> Users { get; set; }
     public DbSet<Categories> Categories { get; set; }
@@ -58,4 +61,6 @@ public class DBContext : DbContext
     public DbSet<WarehouseStock> WarehouseStocks { get; set; }
     public DbSet<StockTransfer> StockTransfers { get; set; }
     public DbSet<StockTransferLine> StockTransferLines { get; set; }
+    public DbSet<PurchaseReceipt> PurchaseReceipts { get; set; }
+    public DbSet<PurchaseReceiptLine> PurchaseReceiptLines { get; set; }
 }

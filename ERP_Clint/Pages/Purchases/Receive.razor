@@ -1,0 +1,538 @@
+@page "/purchases/receive"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ERP_Clint.Security
+@using ERP_Clint.Service
+@using ERP_Clint.Service.InventoryService
+@using ERP_Clint.Service.PurchasesService
+@using ERPDto.ProductsDto
+@using ERPDto.PurchaseDto
+@using ERPDto.Suppliers
+@using ERPDto.WarehouseDto
+@attribute [Authorize(Roles = "FullAccess,CompletePurchaseReceipt")]
+@inject IPurchasesService PurchasesService
+@inject ISuppliersService SuppliersService
+@inject IWarehousesService WarehousesService
+
+<PageTitle>استلام من مورد</PageTitle>
+
+<div class="page-hero page-hero--purchases">
+    <div class="page-hero__glow"></div>
+    <div class="page-hero__content">
+        <p class="page-hero__eyebrow">المشتريات</p>
+        <h1>استلام من مورد</h1>
+        <p>تسجيل بضاعة واردة وزيادة المخزون فوراً</p>
+    </div>
+</div>
+
+<div class="recv">
+    <div class="recv__main">
+        <div class="recv__card">
+            <div class="recv__grid">
+                <div class="form-group">
+                    <label>المورد</label>
+                    <select class="form-input" @bind="supplierId" disabled="@isBusy">
+                        <option value="0">اختر المورد</option>
+                        @foreach (var s in suppliers)
+                        {
+                            <option value="@s.Id">@s.CompanyName</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>مخزن الاستلام</label>
+                    <select class="form-input" @bind="warehouseId" disabled="@(isBusy || lines.Count > 0)">
+                        @if (warehouses.Count == 0)
+                        {
+                            <option value="0">لا توجد مخازن</option>
+                        }
+                        else
+                        {
+                            @foreach (var w in warehouses.Where(x => x.IsActive))
+                            {
+                                <option value="@w.Id">@w.Name (@w.Code)</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>رقم فاتورة المورد (اختياري)</label>
+                    <input class="form-input" @bind="supplierInvoiceNumber" disabled="@isBusy" maxlength="40" placeholder="INV-..." />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>إضافة منتج (باركود أو اسم)</label>
+                <div class="recv__scan">
+                    <input class="form-input" placeholder="امسح الباركود أو ابحث بالاسم..."
+                           @bind="scanTerm" @bind:event="oninput"
+                           @onkeydown="OnScanKey" disabled="@isBusy" />
+                    <button class="btn-primary" type="button" @onclick="AddFromScan" disabled="@isBusy">إضافة</button>
+                </div>
+                @if (suggestions.Count > 0)
+                {
+                    <div class="recv__suggest">
+                        @foreach (var p in suggestions)
+                        {
+                            <button type="button" class="recv__suggest-item" @onclick="() => AddProduct(p)">
+                                <strong>@p.Name</strong>
+                                <span class="mono">@p.Barcode</span>
+                            </button>
+                        }
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(scanError))
+                {
+                    <div class="recv__error">@scanError</div>
+                }
+            </div>
+        </div>
+
+        <div class="recv__card">
+            <div class="recv__card-head">
+                <h3>بنود الاستلام</h3>
+                @if (lines.Count > 0)
+                {
+                    <button type="button" class="btn-secondary" @onclick="ClearLines" disabled="@isBusy">تفريغ</button>
+                }
+            </div>
+
+            @if (lines.Count == 0)
+            {
+                <div class="state-box">أضف منتجات عبر الباركود أو البحث</div>
+            }
+            else
+            {
+                <table class="recv__table">
+                    <thead>
+                        <tr>
+                            <th>المنتج</th>
+                            <th style="width:120px">الوحدة</th>
+                            <th style="width:90px">الكمية</th>
+                            <th style="width:120px">كلفة الوحدة</th>
+                            <th style="width:110px">الإجمالي</th>
+                            <th style="width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in lines)
+                        {
+                            <tr>
+                                <td>
+                                    <div>@line.ProductName</div>
+                                    <div class="mono muted">@line.Barcode</div>
+                                </td>
+                                <td>
+                                    @if (line.Units.Count > 1)
+                                    {
+                                        <select class="form-input form-input--sm" value="@line.ProductUnitId"
+                                                @onchange="e => ChangeUnit(line, e)" disabled="@isBusy">
+                                            @foreach (var u in line.Units)
+                                            {
+                                                <option value="@u.Id">@u.Name (×@u.Factor)</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span>@line.UnitName</span>
+                                    }
+                                </td>
+                                <td>
+                                    <input class="form-input form-input--sm mono" type="number" min="1"
+                                           value="@line.Quantity" @onchange="e => ChangeQty(line, e)" disabled="@isBusy" />
+                                </td>
+                                <td>
+                                    <input class="form-input form-input--sm mono" type="number" min="0" step="1"
+                                           value="@line.UnitCost" @onchange="e => ChangeCost(line, e)" disabled="@isBusy" />
+                                </td>
+                                <td class="mono">@line.LineTotal.ToString("N0")</td>
+                                <td>
+                                    <button type="button" class="recv__remove" @onclick="() => RemoveLine(line)" disabled="@isBusy">✕</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <aside class="recv__side">
+        <div class="recv__card recv__summary">
+            <h3>ملخص الاستلام</h3>
+            <div class="recv__row"><span>عدد البنود</span><strong>@lines.Count</strong></div>
+            <div class="recv__row"><span>المجموع</span><strong class="mono">@SubTotal.ToString("N0")</strong></div>
+            <div class="form-group">
+                <label>الخصم</label>
+                <input class="form-input mono" type="number" min="0" @bind="discount" @bind:event="oninput" disabled="@isBusy" />
+            </div>
+            <div class="recv__row recv__total"><span>الصافي</span><strong class="mono">@Total.ToString("N0")</strong></div>
+            <div class="form-group">
+                <label>ملاحظات</label>
+                <textarea class="form-input" rows="3" @bind="notes" disabled="@isBusy"></textarea>
+            </div>
+            @if (!string.IsNullOrEmpty(submitError))
+            {
+                <div class="recv__error">@submitError</div>
+            }
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="recv__ok">@successMessage</div>
+            }
+            <button class="btn-primary recv__submit" type="button" @onclick="Complete" disabled="@(isBusy || lines.Count == 0)">
+                @(isBusy ? "جاري الحفظ..." : "تأكيد الاستلام")
+            </button>
+            <AuthorizeView Roles="@PermissionHelper.Roles(PermissionNames.GetPurchaseReceipts)">
+                <Authorized>
+                    <a class="recv__link" href="purchases/history">سجل الاستلام ←</a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </aside>
+</div>
+
+<style>
+    .page-hero--purchases .page-hero__glow {
+        background: radial-gradient(500px 220px at 20% 30%, rgba(56,189,248,0.18), transparent 60%);
+    }
+    .recv { display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start; }
+    @@media (max-width: 980px) { .recv { grid-template-columns: 1fr; } }
+    .recv__main { display:flex; flex-direction:column; gap:16px; min-width:0; }
+    .recv__card {
+        background:#141a22; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px;
+    }
+    .recv__card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .recv__card-head h3, .recv__summary h3 { margin:0 0 14px; font-size:15px; color:#fff; }
+    .recv__grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+    @@media (max-width: 900px) { .recv__grid { grid-template-columns:1fr; } }
+    .form-group { margin-bottom:12px; }
+    .form-group label { display:block; font-size:12px; color:rgba(255,255,255,0.55); margin-bottom:6px; font-weight:600; }
+    .recv__scan { display:flex; gap:8px; }
+    .recv__suggest {
+        margin-top:8px; border:1px solid rgba(255,255,255,0.08); border-radius:10px; overflow:hidden; background:#0f1418;
+    }
+    .recv__suggest-item {
+        width:100%; text-align:right; background:none; border:none; border-bottom:1px solid rgba(255,255,255,0.06);
+        color:#e8edf2; padding:10px 12px; cursor:pointer; display:flex; justify-content:space-between; gap:10px;
+        font-family:'Cairo',sans-serif;
+    }
+    .recv__suggest-item:hover { background:rgba(56,189,248,0.08); }
+    .recv__table { width:100%; border-collapse:collapse; }
+    .recv__table th { font-size:12px; color:rgba(255,255,255,0.45); padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,0.08); }
+    .recv__table td { padding:10px 8px; border-bottom:1px solid rgba(255,255,255,0.06); vertical-align:middle; }
+    .form-input--sm { width:100%; padding:8px 10px; font-size:13px; }
+    .recv__remove { background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:14px; }
+    .recv__remove:hover { color:#f87171; }
+    .recv__row { display:flex; justify-content:space-between; margin-bottom:10px; color:rgba(255,255,255,0.65); }
+    .recv__total { margin:14px 0; padding:12px; border-radius:10px; background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.25); color:#fff; }
+    .recv__submit { width:100%; margin-top:8px; padding:12px; }
+    .recv__link { display:block; text-align:center; margin-top:12px; color:rgba(255,255,255,0.45); font-size:13px; text-decoration:none; }
+    .recv__error { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#f87171; padding:10px; border-radius:10px; font-size:13px; margin:8px 0; }
+    .recv__ok { background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.35); color:#4ade80; padding:10px; border-radius:10px; font-size:13px; margin:8px 0; }
+    .state-box { padding:28px; text-align:center; color:rgba(255,255,255,0.4); }
+    .muted { font-size:12px; opacity:.45; }
+    .mono { font-variant-numeric: tabular-nums; }
+</style>
+
+@code {
+    private List<SuppliersDto> suppliers = new();
+    private List<WarehouseDto> warehouses = new();
+    private readonly List<CartLine> lines = new();
+    private List<ProductDto> suggestions = new();
+
+    private int supplierId;
+    private int warehouseId;
+    private string? supplierInvoiceNumber;
+    private string scanTerm = string.Empty;
+    private string? scanError;
+    private string? submitError;
+    private string? successMessage;
+    private double discount;
+    private string? notes;
+    private bool isBusy;
+    private CancellationTokenSource? searchCts;
+
+    private double SubTotal => lines.Sum(l => l.LineTotal);
+    private double Total => Math.Max(0, Math.Round(SubTotal - discount, MidpointRounding.AwayFromZero));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            suppliers = await SuppliersService.GetAllSuppliersAsync() ?? new();
+            warehouses = await WarehousesService.GetAllWarehousesAsync() ?? new();
+            if (warehouseId == 0)
+                warehouseId = warehouses.FirstOrDefault(w => w.IsActive)?.Id ?? warehouses.FirstOrDefault()?.Id ?? 0;
+        }
+        catch (Exception ex)
+        {
+            submitError = ex.Message;
+        }
+    }
+
+    private async Task OnScanKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddFromScan();
+            return;
+        }
+
+        searchCts?.Cancel();
+        searchCts = new CancellationTokenSource();
+        var token = searchCts.Token;
+        try
+        {
+            await Task.Delay(280, token);
+            await SearchSuggestions();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private async Task SearchSuggestions()
+    {
+        suggestions.Clear();
+        scanError = null;
+        if (string.IsNullOrWhiteSpace(scanTerm) || scanTerm.Trim().Length < 2)
+            return;
+
+        try
+        {
+            suggestions = await PurchasesService.SearchProductsAsync(scanTerm.Trim(), warehouseId) ?? new();
+        }
+        catch (Exception ex)
+        {
+            scanError = ex.Message;
+        }
+    }
+
+    private async Task AddFromScan()
+    {
+        scanError = null;
+        suggestions.Clear();
+        var term = scanTerm.Trim();
+        if (string.IsNullOrWhiteSpace(term))
+            return;
+        if (warehouseId <= 0)
+        {
+            scanError = "اختر مخزن الاستلام أولاً";
+            return;
+        }
+
+        isBusy = true;
+        try
+        {
+            var byBarcode = await PurchasesService.LookupProductByBarcodeAsync(term, warehouseId);
+            if (byBarcode is not null)
+            {
+                AddLookup(byBarcode);
+                scanTerm = string.Empty;
+                return;
+            }
+
+            var products = await PurchasesService.SearchProductsAsync(term, warehouseId) ?? new();
+            if (products.Count == 1)
+            {
+                AddProduct(products[0]);
+                scanTerm = string.Empty;
+            }
+            else if (products.Count > 1)
+            {
+                suggestions = products;
+                scanError = "اختر منتجاً من النتائج";
+            }
+            else
+            {
+                scanError = "لم يتم العثور على المنتج";
+            }
+        }
+        catch (Exception ex)
+        {
+            scanError = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private void AddLookup(ProductLookupDto p)
+    {
+        var existing = lines.FirstOrDefault(l => l.ProductId == p.ProductId && l.ProductUnitId == p.UnitId);
+        if (existing is not null)
+        {
+            existing.Quantity += 1;
+            return;
+        }
+
+        var unitCost = p.UnitFactor > 1
+            ? Math.Round(p.CostPrice * p.UnitFactor, MidpointRounding.AwayFromZero)
+            : p.CostPrice;
+
+        lines.Add(new CartLine
+        {
+            ProductId = p.ProductId,
+            ProductName = p.Name,
+            Barcode = p.Barcode,
+            ProductUnitId = p.UnitId > 0 ? p.UnitId : null,
+            UnitName = string.IsNullOrWhiteSpace(p.UnitName) ? "مفرد" : p.UnitName,
+            UnitFactor = p.UnitFactor <= 0 ? 1 : p.UnitFactor,
+            Quantity = 1,
+            UnitCost = unitCost,
+            Units =
+            [
+                new ProductUnitDto
+                {
+                    Id = p.UnitId,
+                    Name = string.IsNullOrWhiteSpace(p.UnitName) ? "مفرد" : p.UnitName,
+                    Factor = p.UnitFactor <= 0 ? 1 : p.UnitFactor,
+                    SellingPrice = p.UnitPrice
+                }
+            ]
+        });
+    }
+
+    private void AddProduct(ProductDto p)
+    {
+        suggestions.Clear();
+        scanTerm = string.Empty;
+
+        var unit = p.Units.FirstOrDefault(u => u.IsBase)
+            ?? p.Units.FirstOrDefault()
+            ?? new ProductUnitDto { Id = 0, Name = "مفرد", Factor = 1, SellingPrice = p.SellingPrice };
+
+        var existing = lines.FirstOrDefault(l => l.ProductId == p.Id && (l.ProductUnitId ?? 0) == unit.Id);
+        if (existing is not null)
+        {
+            existing.Quantity += 1;
+            return;
+        }
+
+        var factor = unit.Factor <= 0 ? 1 : unit.Factor;
+        lines.Add(new CartLine
+        {
+            ProductId = p.Id,
+            ProductName = p.Name,
+            Barcode = p.Barcode,
+            ProductUnitId = unit.Id > 0 ? unit.Id : null,
+            UnitName = unit.Name,
+            UnitFactor = factor,
+            Quantity = 1,
+            UnitCost = Math.Round(p.CostPrice * factor, MidpointRounding.AwayFromZero),
+            Units = p.Units.Count > 0 ? p.Units : [unit]
+        });
+    }
+
+    private void ChangeUnit(CartLine line, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var unitId)) return;
+        var unit = line.Units.FirstOrDefault(u => u.Id == unitId);
+        if (unit is null) return;
+        var oldFactor = line.UnitFactor <= 0 ? 1 : line.UnitFactor;
+        var baseCost = line.UnitCost / oldFactor;
+        line.ProductUnitId = unit.Id;
+        line.UnitName = unit.Name;
+        line.UnitFactor = unit.Factor <= 0 ? 1 : unit.Factor;
+        line.UnitCost = Math.Round(baseCost * line.UnitFactor, MidpointRounding.AwayFromZero);
+    }
+
+    private void ChangeQty(CartLine line, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var qty) && qty > 0)
+            line.Quantity = qty;
+    }
+
+    private void ChangeCost(CartLine line, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out var cost) && cost >= 0)
+            line.UnitCost = cost;
+    }
+
+    private void RemoveLine(CartLine line) => lines.Remove(line);
+    private void ClearLines() => lines.Clear();
+
+    private async Task Complete()
+    {
+        submitError = null;
+        successMessage = null;
+
+        if (supplierId <= 0)
+        {
+            submitError = "يجب اختيار المورد";
+            return;
+        }
+        if (warehouseId <= 0)
+        {
+            submitError = "يجب اختيار مخزن الاستلام";
+            return;
+        }
+        if (lines.Count == 0)
+        {
+            submitError = "أضف منتجاً واحداً على الأقل";
+            return;
+        }
+        if (discount < 0 || discount > SubTotal)
+        {
+            submitError = "الخصم غير صحيح";
+            return;
+        }
+
+        isBusy = true;
+        try
+        {
+            var model = new CompletePurchaseReceiptModel
+            {
+                SupplierId = supplierId,
+                WarehouseId = warehouseId,
+                Discount = discount,
+                Notes = notes,
+                SupplierInvoiceNumber = supplierInvoiceNumber,
+                Lines = lines.Select(l => new CompletePurchaseLineDto
+                {
+                    ProductId = l.ProductId,
+                    ProductUnitId = l.ProductUnitId,
+                    Quantity = l.Quantity,
+                    UnitCost = l.UnitCost,
+                    Barcode = l.Barcode
+                }).ToList()
+            };
+
+            var result = await PurchasesService.CompleteReceiptAsync(model);
+            lines.Clear();
+            discount = 0;
+            notes = null;
+            supplierInvoiceNumber = null;
+            successMessage = result is null
+                ? "تم الاستلام بنجاح"
+                : $"تم الاستلام — {result.ReceiptNumber}";
+        }
+        catch (ApiRequestException ex)
+        {
+            submitError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            submitError = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private sealed class CartLine
+    {
+        public int ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string? Barcode { get; set; }
+        public int? ProductUnitId { get; set; }
+        public string UnitName { get; set; } = "مفرد";
+        public int UnitFactor { get; set; } = 1;
+        public int Quantity { get; set; } = 1;
+        public double UnitCost { get; set; }
+        public double LineTotal => Math.Round(UnitCost * Quantity, MidpointRounding.AwayFromZero);
+        public List<ProductUnitDto> Units { get; set; } = new();
+    }
+}
