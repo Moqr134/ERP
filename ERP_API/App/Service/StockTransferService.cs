@@ -178,12 +178,52 @@ namespace ERP_API.App.Service
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return await GetTransferByIdAsync(transfer.Id);
+                var fromName = await _context.Warehouses.AsNoTracking()
+                    .Where(w => w.Id == transfer.FromWarehouseId)
+                    .Select(w => w.Name)
+                    .FirstAsync();
+                var toName = await _context.Warehouses.AsNoTracking()
+                    .Where(w => w.Id == transfer.ToWarehouseId)
+                    .Select(w => w.Name)
+                    .FirstAsync();
+
+                return new StockTransferDto
+                {
+                    Id = transfer.Id,
+                    TransferNumber = transfer.TransferNumber,
+                    FromWarehouseId = transfer.FromWarehouseId,
+                    FromWarehouseName = fromName,
+                    ToWarehouseId = transfer.ToWarehouseId,
+                    ToWarehouseName = toName,
+                    Status = transfer.Status,
+                    Notes = transfer.Notes,
+                    CreateDate = transfer.CreateDate,
+                    Lines = products
+                        .Where(p => merged.Any(l => l.ProductId == p.Id))
+                        .Select(p =>
+                        {
+                            var line = merged.First(l => l.ProductId == p.Id);
+                            return new StockTransferLineDto
+                            {
+                                ProductId = p.Id,
+                                ProductName = p.Name,
+                                Barcode = p.Barcode,
+                                Quantity = line.Quantity
+                            };
+                        })
+                        .ToList()
+                };
             }
             catch (DbUpdateConcurrencyException)
             {
                 await transaction.RollbackAsync();
                 throw new InvalidOperationException("تم تعديل المخزون من عملية أخرى، أعد المحاولة");
+            }
+            catch (DbUpdateException ex)
+            {
+                await transaction.RollbackAsync();
+                throw new InvalidOperationException(
+                    "تعذر حفظ التحويل. تأكد من أن الكمية متوفرة في مخزن المصدر وأن المخازن صحيحة.", ex);
             }
             catch
             {

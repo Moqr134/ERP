@@ -20,6 +20,11 @@ namespace ERP_API.App.Inventory
 
         public static async Task<int> GetQuantityAsync(DBContext context, int productId, int warehouseId)
         {
+            var local = context.WarehouseStocks.Local
+                .FirstOrDefault(s => s.ProductId == productId && s.WarehouseId == warehouseId && !s.IsRemoved);
+            if (local is not null)
+                return local.Quantity;
+
             return await context.WarehouseStocks
                 .Where(s => s.ProductId == productId && s.WarehouseId == warehouseId && !s.IsRemoved)
                 .Select(s => s.Quantity)
@@ -33,7 +38,12 @@ namespace ERP_API.App.Inventory
             int userId,
             DateTime now)
         {
-            var stock = await context.WarehouseStocks
+            // Prefer tracked/local rows so repeated adjustments in one transaction
+            // do not insert duplicate (ProductId, WarehouseId) balances.
+            var stock = context.WarehouseStocks.Local
+                .FirstOrDefault(s => s.ProductId == product.Id && s.WarehouseId == warehouseId && !s.IsRemoved);
+
+            stock ??= await context.WarehouseStocks
                 .FirstOrDefaultAsync(s => s.ProductId == product.Id && s.WarehouseId == warehouseId && !s.IsRemoved);
 
             if (stock is not null)
@@ -72,7 +82,8 @@ namespace ERP_API.App.Inventory
             stock.Quantity = next;
             stock.UpdateDate = now;
             stock.UpdateUserId = userId;
-            context.WarehouseStocks.Entry(stock).State = EntityState.Modified;
+            // Do NOT force EntityState.Modified — newly Added balances must stay Added
+            // (forcing Modified caused transfer-to-empty-warehouse failures).
 
             product.CurrentStock = checked(product.CurrentStock + delta);
             if (product.CurrentStock < 0)
@@ -80,7 +91,6 @@ namespace ERP_API.App.Inventory
 
             product.UpdateDate = now;
             product.UpdateUserId = userId;
-            context.Products.Entry(product).State = EntityState.Modified;
         }
 
         public static async Task RecalcProductTotalAsync(DBContext context, Product product)
@@ -89,7 +99,6 @@ namespace ERP_API.App.Inventory
                 .Where(s => s.ProductId == product.Id && !s.IsRemoved)
                 .SumAsync(s => (int?)s.Quantity) ?? 0;
             product.CurrentStock = total;
-            context.Products.Entry(product).State = EntityState.Modified;
         }
 
         public static async Task<int> ResolveDefaultWarehouseIdAsync(DBContext context)
